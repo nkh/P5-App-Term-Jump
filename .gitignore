@@ -1,0 +1,15 @@
+*.bak
+*.swp
+Build
+!Build/
+Changes
+Debian_CPANTS.txt
+_build/
+blib/
+.directory
+META.yml
+MYMETA.json
+MYMETA.yml
+Version.pm
+archive/
+html/

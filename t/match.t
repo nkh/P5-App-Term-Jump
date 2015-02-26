@@ -6,24 +6,6 @@ use t::Jump qw(jump_test) ;
 
 jump_test
 	(
-	name => 'cwd added',
-
-	temporary_directory_structure => 
-		{
-		A => {}, 
-		},
-	db_start => {},
- 	tests =>
-		[
-		{
-		command => q{ run('--add', 'A') },
-		db_expected => {'TD/A' => 1},
-		} ,
-		]
-	) ;
-
-jump_test
-	(
 	name => 'no_match',
 
 	temporary_directory_structure => 
@@ -46,248 +28,6 @@ jump_test
 		]
 	) ;
 
-jump_test
-	(
-	name => 'start directory',
-
-	temporary_directory_structure => 
-		{
-		# /lib is part of the linux filesystem
-		blib => 
-			{
-			a => {},
-			},
-		lib => 
-			{
-			a => {},
-			},
-		},
-	db_start => {},
- 	tests =>
-		[
-		{
-		command => q{ run('--search', '/lib') },
-		captured_output_expected => ['/lib'],
-		} ,
-		{
-		command => q{ run('--search', 'lib', 'a') },
-		captured_output_expected => ['TD/blib/a'],
-		} ,
-		{
-		command => q{ run('--search', './lib', 'a') },
-		captured_output_expected => ['TD/lib/a'],
-		} ,
-		{
-		command => q{ run('--search', '/lib', 'a') },
-		captured_output_expected => ['TD/lib/a'],
-		} ,
-		],
-	) ;
-
-jump_test
-	(
-	name => 'direct_path',
-
-	temporary_directory_structure => 
-		{
-		existing_test_directory => {}, 
-		sub_directory =>
-			{
-			existing_test_directory => {},
-			},
-		},
-	db_start => {},
- 	tests =>
-		[
-		{
-		command => q{ run('--add', 'TD/existing_test_directory') },
-		db_expected => {'TD/existing_test_directory' => 1},
-		} ,
-		{
-		command => q{ run('--add', 'TD/sub_directory/existing_test_directory') },
-		db_expected => 
-			{
-			'TD/existing_test_directory' => 1,
-			'TD/sub_directory/existing_test_directory' => 1,
-			 },
-		} ,
-		]
-	) ;
-
-jump_test
-	(
-	name => 'no_existing_path',
-
-	temporary_directory_structure => 
-		{
-		existing_test_directory => {}, 
-		sub_directory =>
-			{
-			existing_test_sub_directory => {},
-			},
-		},
-	db_start => {},
- 	tests =>
-		[
-		{
-		command => q{ run('--add', 'TD/non_existing_test_directory') },
-		warnings_expected => [qr{Jump: Error '.+/non_existing_test_directory' is not a directory}],
-		db_expected => {},
-		} ,
-		{
-		command => q{ run('--add', 'TD/non_existing_sub_directory/non_existing_test_directory') },
-		warnings_expected => [qr{Jump: Error '.+/non_existing_sub_directory/non_existing_test_directory' is not a directory}],
-		db_expected => {}, 
-		} ,
-		]
-	) ;
-
-jump_test
-	(
-	name => 'default_to_cwd',
-
-	temporary_directory_structure => {}, 
-	db_start => {},
- 	tests =>
-		[
-		{
-		command => q{ run('--add') },
-		db_expected => {'TD' => 1},
-		} ,
-		]
-	) ;
-
-
-jump_test
-	(
-	name => 'increase',
-
-	temporary_directory_structure => {}, 
-	db_start => {},
- 	tests =>
-		[
-		{
-		command => q{ run('--add') },
-		db_expected => {'TD' => 1},
-		} ,
-		{
-		command => q{ run('--add', 10) },
-		db_expected => {'TD' => 11},
-		} ,
-		]
-	) ;
-
-
-jump_test
-	(
-	name => 'reversed arguments',
-
-	temporary_directory_structure => {}, 
-	db_start => {},
- 	tests =>
-		[
-		{
-		command => q{ run('--add', 'TD', 10) },
-		db_expected => {'TD' => 10},
-		} ,
-		]
-	) ;
-
-jump_test
-	(
-	name => 'remove all',
-
-	temporary_directory_structure => {subdir => {}}, 
-	db_start => {},
- 	tests =>
-		[
-		{
-		command => q{ run('--add', 'TD', 10) },
-		db_expected => {'TD' => 10},
-		} ,
-		{
-		command => q{ run('--add', 'subdir') },
-		db_expected => {'TD' => 10, 'TD/subdir' => 1},
-		} ,
-		{
-		command => q{ run('--remove_all') },
-		db_expected => {},
-		} ,
-		]
-	) ;
-
-jump_test
-	(
-	name => 'remove',
-
-	temporary_directory_structure => {subdir => {}}, 
-	db_start => {},
- 	tests =>
-		[
-		{
-		command => q{ run('--add', 'TD', 10) },
-		db_expected => {'TD' => 10},
-		} ,
-		{
-		command => q{ run('--add', 'subdir') },
-		db_expected => {'TD' => 10, 'TD/subdir' => 1},
-		} ,
-		{
-		command => q{ run('--remove') },
-		db_expected => {'TD/subdir' => 1},
-		} ,
-		]
-	) ;
-
-jump_test
-	(
-	name => 'decrease',
-
-	temporary_directory_structure => {}, 
-	db_start => {},
- 	tests =>
-		[
-		{
-		commands => 
-			[
-			q{ run('--add', 'TD', 10) },
-			q{ run('--remove', '--add', 5) },
-			], 
-		db_expected => {'TD' => 5},
-		} ,
-		]
-	) ;
-
-jump_test
-	(
-	name => 'show_database',
-
-	directories_and_db => <<'END_OF_YAML' ,
-in_db: 10
-
-existing_test_directory:
- in_db: 5 
-
-sub_directory:
- in_db: 3
- existing_test_directory: {}
-
-END_OF_YAML
-
- 	tests =>
-		[
-		{
-		command => q{ run('--show_database') },
-		db_expected => {'TD' => 10, 'TD/sub_directory' => 3, 'TD/existing_test_directory' => 5},
-		captured_output_expected => 
-			[
-			'10 TD',
-			'5 TD/existing_test_directory',
-			'3 TD/sub_directory',
-			],
-		} ,
-		]
-	) ;
 
 jump_test
 	(
@@ -412,16 +152,19 @@ END_OF_YAML
 		command => q{ run('--search', 'NO_MATCH') },
 		captured_output_expected => [],
 		} ,
+#---------------
 		{
 		name => 'direct path match',
 		command => q{ run('--search', 'DIRECT_PATH') },
 		captured_output_expected => ['DIRECT_PATH'],
 		} ,
+#---------------
 		{
 		name => 'full directory match',
 		command => q{ run('--search', 'FULL_MATCH') },
 		captured_output_expected => ['TD/C/CC_2/FULL_MATCH'],
 		} ,
+#---------------
 		{
 		name => 'partial directory match',
 		command => q{ run('--search', 'PARTIAL_DIR') },
@@ -437,12 +180,14 @@ END_OF_YAML
 			'TD/D/DD_1/CHARLIE_DDD/DDDD',
 			],
 		} ,
+#---------------
 		{
 		name => 'partial path match, single match',
 		command => q{ run('--search', 'ALPHA') },
 		captured_output_expected => ['TD/D/DD_1/ALPHA_DDD/DDDD'],
 		matches_expected => ['TD/D/DD_1/ALPHA_DDD/DDDD'],
 		} ,
+#---------------
 		{
 		name => 'multiple partial path match, different  weight',
 		command => q{ run('--search', 'BRAVO') },
@@ -473,6 +218,7 @@ END_OF_YAML
 			'TD/E/EE_3/ECHO/XYZ',
 			],
 		} ,
+#---------------
 		{
 		name => 'multiple full directory match with same weight, same path weight',
 		command => q{ run('--search', 'SAME_WEIGHT_PATH_WEIGHT') },
@@ -497,6 +243,7 @@ END_OF_YAML
 		captured_output_expected => ['TD/D/DD_4/SAME_WEIGHT_DIFF_PATH_WEIGHT'],
 		} ,
 
+#---------------
 		# anywhere in the filesystem
 
 		{
@@ -521,6 +268,7 @@ END_OF_YAML
 			],
 		} ,
 
+#---------------
 		{
 		name => 'under db entries, uniq match',
 		cd => 'TD/NOT_IN_DB',
@@ -544,7 +292,6 @@ END_OF_YAML
 			] ,
 		} ,
 
-		# directory not in database not under cwd, max weight, alphabetically
 		]
 	) ;
 

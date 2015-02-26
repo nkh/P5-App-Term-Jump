@@ -66,6 +66,8 @@ jump_test
 	) ;
 
 
+#---------------
+
 my $configuration = <<'EOC' ;
 {
 black_listed_directories =>
@@ -143,6 +145,77 @@ jump_test
 		cd => 'TD/NOT_IN_DB',
 		command => q{ run('--search', 'JULIETTE')},
 		captured_output_expected => [],
+		} ,
+		]
+	) ;
+
+#---------------
+jump_test
+	(
+	name => 'start directory',
+
+	temporary_directory_structure => 
+		{
+		# /lib is part of the linux filesystem
+		blib => 
+			{
+			a => {},
+			},
+		lib => 
+			{
+			a => {},
+			},
+		},
+	db_start => {},
+ 	tests =>
+		[
+		{
+		command => q{ run('--search', '/lib') },
+		captured_output_expected => ['/lib'],
+		} ,
+		{
+		command => q{ run('--search', 'lib', 'a') },
+		captured_output_expected => ['TD/blib/a'],
+		} ,
+		{
+		command => q{ run('--search', './lib', 'a') },
+		captured_output_expected => ['TD/lib/a'],
+		} ,
+		{
+		command => q{ run('--search', '/lib', 'a') },
+		captured_output_expected => ['TD/lib/a'],
+		} ,
+		],
+	) ;
+
+#---------------
+jump_test
+	(
+	name => 'show_database',
+
+	directories_and_db => <<'END_OF_YAML' ,
+in_db: 10
+
+existing_test_directory:
+ in_db: 5 
+
+sub_directory:
+ in_db: 3
+ existing_test_directory: {}
+
+END_OF_YAML
+
+ 	tests =>
+		[
+		{
+		command => q{ run('--show_database') },
+		db_expected => {'TD' => 10, 'TD/sub_directory' => 3, 'TD/existing_test_directory' => 5},
+		captured_output_expected => 
+			[
+			'10 TD',
+			'5 TD/existing_test_directory',
+			'3 TD/sub_directory',
+			],
 		} ,
 		]
 	) ;

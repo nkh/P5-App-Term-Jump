@@ -2,3 +2,13 @@
 # This is Todo.txt #
 #------------------#
 
+
+Match matrice
+	single/multiple
+	directory weight
+	path weight
+	alpha
+
+	db not db
+	under cwd
+	under db entry

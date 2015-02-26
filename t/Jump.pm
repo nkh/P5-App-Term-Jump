@@ -108,7 +108,9 @@ for my $test (@{$setup_arguments{tests}})
 	$test_index++ ;
 	my $test_name = $test->{name} || '' ;
 
-	die "Error: need 'command' or 'commands' fields in a test '$test_name::$test_index'" if ! exists $test->{command} &&  ! exists $test->{commands} ;
+	die "Error: need 'command' or 'commands' fields in a test '$test_name::$test_index'" , DumpTree($test)
+		if ! exists $test->{command} &&  ! exists $test->{commands} ;
+
  	if(exists $test->{command})
 		{
 	 	die "Error: can't have 'command' and 'commands' fields in a test '$test_name::$test_index'" if exists $test->{commands} ;

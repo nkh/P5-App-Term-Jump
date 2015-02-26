@@ -188,8 +188,8 @@ END_OF_YAML
 
 		{
 		name => 'partial directory match, single match',
-		command => q{ run('--search', 'CC', 'PARTIAL_DIR') },
-		captured_output_expected => ['TD/C/CC_2/PARTIAL_DIR_CCC'],
+		command => q{ run('--search', 'CC', 'FUL') },
+		captured_output_expected => ['TD/C/CC_2/FULL_MATCH'],
 		} ,
 
 		{
@@ -210,12 +210,16 @@ END_OF_YAML
 		matches_expected => 
 			[
 			'TD/C/CC_3/PARTIAL_DIR_CCC_1',
+			'TD/C/CC_3/PARTIAL_DIR_CCC_2_AAA',
+			'TD/C/CC_4/PARTIAL_DIR_CCC_2_AAA',
+			'TD/C/CC_2/PARTIAL_DIR_CCC',
 			'TD/C/CC_2/PARTIAL_DIR_CCC_1',
 			],
 		} ,
 
 		{
 		name => 'partial directory match, same weight, same path weight, alpha',
+		command => q{ run('--search', 'CC', 'AA') },
 		captured_output_expected => ['TD/C/CC_3/PARTIAL_DIR_CCC_2_AAA'],
 		matches_expected => 
 			[
@@ -306,12 +310,14 @@ END_OF_YAML
 		{
 		name => 'under db entries, diff path weight',
 		cd => 'TD/NOT_IN_DB',
-		command => q{ run('--search', 'HOTEL') },
+		command => q{ run('--search', 'JULIETTE') },
 		captured_output_expected => ['TD/A/B_4/JULIETTE'],
 		matches_expected => 
 			[
 			'TD/A/B_4/JULIETTE',
-			'TD/A/B/C/D/E/F/JULIETTE',
+			'TD/A/B/C/D/F/JULIETTE',
+			'TD/A/B/C/D/F/JULIETTE',
+			'TD/A/B_4/JULIETTE',
 			] ,
 		} ,
 

@@ -147,6 +147,10 @@ Paths are matched in this order:
 
 =over 2
 
+=item * existing full path
+
+option I<no_direct_path> disables this matching
+
 =item * match directory under the current working directory
 
 this allow Jump to mimic I<cd>'s behavior. 
@@ -155,6 +159,8 @@ this allow Jump to mimic I<cd>'s behavior.
 
 will return /A even though /path_part/path_part2/A is a database entry with weight:10 
  
+option I<no_direct_path> disables this matching
+
 =item * full match last directory of database entry
 
   $> jump --search B 
@@ -179,20 +185,32 @@ will return /path_part/path_part2/C which sorts before /path_part/path_part3/C
 
 will return  /path_part/path_part3/C which is the entry containing I<path> and has the heaviest weight 
  
+
 =item * match sub directory of cwd
 
   $> jump --search E
 
 will return /subdir/E  
+
+option I<no_cwd> disables this matching
  
 =item * match sub directory of a db entry
 
   $> jump --search F
 
 will return  /path_part/path_part3/C/F. /path_part/path_part2/F is not under a database entry 
- 
+
+option I<no_sub_db> disables this matching
+
 =back
 
+# grep all paths in the filesystem
+# if option is set
+# if option to ask is set
+# if answer is positive
+# do we stop at first match?
+
+ 
 =head2 Matching with multiple path parts
 
   $> jump --search C
@@ -229,6 +247,7 @@ sub run
 my (@command_line_arguments) = @_ ;
 
 my ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete) ;
+my ($no_direct_path, $no_cwd, $no_sub_db) ;
 
 {
 local @ARGV = @command_line_arguments ;
@@ -237,17 +256,20 @@ die 'Error parsing options!'unless
         GetOptions
                 (
 		'search' => \$search,
+		'complete' => \$complete,
+
+		'no_direct_path' => \$no_direct_path, 
+		'no_cwd' => \$no_cwd,
+		'no_sub_db' => \$no_sub_db,
 
 		'a|add' => \$add,
 		'r|remove' => \$remove,
 		'remove_all' => \$remove_all,
 
 		's|show_database' => \$show_database,
+
 		'show_setup_files' => \$show_setup_files,
 		'v|V|version' => \$version,
-
-		'complete' => \$complete,
-
                 'h|help' => \&show_help, 
                 
                 'dump_options' => 
@@ -255,14 +277,11 @@ die 'Error parsing options!'unless
                                 {
                                 print join "\n", map {"-$_"} 
                                         qw(
-                                        search
-					add
-					remove
-					remove_all
+                                        search complete
+					no_direct_path no_cwd no_sub_db
+					add remove remove_all
 					show_database
-					version
-					complete
-					help
+					show_setup_files version help
                                         ) ;
                                         
                                 exit(0) ;
@@ -303,15 +322,7 @@ $index-- ;
 
 my (@matches) = find_closest_match($index, @_) ;
 
-=pod comment 
-if(@matches)
-	{
-	print join("\n", @matches) . "\n" ;
-	}
-=cut
-
-use Data::TreeDumper;
-print DumpTree $_ for (@matches) ;
+print $_->{path} . "\n" for @matches ;
 
 return (@matches) ;
 }
@@ -371,7 +382,7 @@ if(1 == @paths && !$config->{no_direct_path})
 		
 		$path_to_match =~ s[^\./+][] ;
 		$path_to_match =~ s[^/+][] ;
-		push @direct_matches, {path => $path_to_match, weight => 0, matches => 'direct path under cwd'} ;
+		push @direct_matches, {path => $path_to_match, weight => 0, matches => 'directory under cwd'} ;
 		}
 	}
 
@@ -444,11 +455,15 @@ if(0 == $matched && ! $config->{no_cwd})
 
 		if($sub_directory =~ $cwd_path_to_match)
 			{
-			push @cwd_sub_directory_matches, {path => $directory, weight => 0, matches => 'directory under cwd'} ;
+			my @directories = File::Spec->splitdir($directory) ;
+			my $cumulated_path_weight = get_paths_weight($db, @directories) ;
+
+			push @cwd_sub_directory_matches, {path => $directory, weight => 0, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under cwd'} ;
 			} 
 		}
 	
-	@cwd_sub_directory_matches = sort {$a->{path} cmp $b->{path}} @cwd_sub_directory_matches ;
+	@cwd_sub_directory_matches = sort {$b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} @cwd_sub_directory_matches ;
+	
 	$matched++ if @cwd_sub_directory_matches ;
 	}
 

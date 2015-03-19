@@ -170,9 +170,9 @@ for my $test (@{$setup_arguments{tests}})
 			}
 		}
 
-	$capture->stop(); 
+	$capture->stop() ;
 	$test->{captured_output} = [map {chomp ; $_} $capture->read()] if exists $test->{captured_output_expected} ;
-
+	
 	$test->{db_after_command} = App::Term::Jump::read_db() ;
 
 	do { cmp_deeply($test->{captured_output}, $test->{captured_output_expected}, "output-$setup_arguments{name}-$test_name::$test_index") or $error++}

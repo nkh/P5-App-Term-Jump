@@ -168,7 +168,6 @@ my $build = $class->new
 		'Sub::Exporter'     => 0,
 		'Data::TreeDumper' => 0,
 		'Data::TreeDumper::Utils' => 0,
-		'Data::TreeDumper::Renderer::DHTML' => 0,
 		
 		'Cwd' => 0,
 		'File::Basename' => 0,
@@ -176,14 +175,15 @@ my $build = $class->new
 		'File::Slurp' => 0,
 		'File::HomeDir'           => '0.86',
 		'Text::Pluralize' => 0,
+		'Tree::Trie' => 0,
 		},
 		
 	pm_files     => \%all_modules,
-	#~ autosplit    => \@split_modules,
 	
 	script_files => 
 		[
 		'scripts/jump',
+		'scripts/cdd',
 		],
 
 	dist_author  => 'Khemir Nadim ibn Hamouda. <nadim.khemir@gmail.com>',

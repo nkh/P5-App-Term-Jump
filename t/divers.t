@@ -115,14 +115,15 @@ jump_test
 		[
 		{
 		name => 'blacklisted string',
-		command => q{ run('--add', 'BLACKLISTER_DIR') },
+		command => q{ run('--add', 'BLACKLISTED_DIR') },
 		captured_output_expected => [],
-		,
+		db_expected => {'TD/A' => 5, 'TD/A/BB' => 3},
 		},  
 		{
 		name => 'blacklisted qr',
 		command => q{ run('--add', 'B_BL_BBB') },
 		captured_output_expected => [],
+		db_expected => {'TD/A' => 5, 'TD/A/BB' => 3},
 		} ,
 		{
 		name => 'ignore case',
@@ -132,6 +133,11 @@ jump_test
 		{
 		name => 'direct path',
 		command => q{ run('--search', 'DIRECT_PATH') }, 
+		captured_output_expected => [],
+		} ,
+		{
+		name => 'direct path',
+		command => q{ run('--search', 'BLACKLISTED_DIR') }, 
 		captured_output_expected => [],
 		} ,
 		{
@@ -216,6 +222,34 @@ END_OF_YAML
 			'5 TD/existing_test_directory',
 			'3 TD/sub_directory',
 			],
+		} ,
+		]
+	) ;
+
+
+#---------------
+jump_test
+	(
+	name => 'show_database',
+
+	directories_and_db => <<'END_OF_YAML' ,
+in_db: 10
+
+existing_test_directory:
+ in_db: 5 
+
+sub_directory:
+ in_db: 3
+ existing_test_directory: {}
+
+END_OF_YAML
+
+ 	tests =>
+		[
+		{
+		command => q{ run('--search') },
+		db_expected => {'TD' => 10, 'TD/sub_directory' => 3, 'TD/existing_test_directory' => 5},
+		captured_output_expected => [], 
 		} ,
 		]
 	) ;

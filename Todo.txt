@@ -2,7 +2,7 @@
 # This is Todo.txt #
 #------------------#
 
-
+--alias the_alias directory|cwd
 
 --debug/seach info
 	show what category matches are in
@@ -11,6 +11,10 @@
 	as jump --complete start from current directory and find all matches below it
 		this is an error!
 			--find should handle that
+
+--file regex	search for the first directory in the DB that containsthe file
+		also works with complete
+			display tree like like ra find
 	
 Match matrice
 	single/multiple

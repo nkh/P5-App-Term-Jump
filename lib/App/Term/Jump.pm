@@ -55,6 +55,8 @@ command line or integrated with Bash.
   ~/.jump_database      default database
   ~/.jump_config	optional configuration file, a Perl hash format
 
+=head1 CONFIGURATION
+
 	{
 	black_listed_directories => [string, qr] , # paths matching are not added to db
 
@@ -70,20 +72,26 @@ command line or integrated with Bash.
   APP_TERM_JUMP_DB	name of the database file
   APP_TERM_JUMP_CONFIG	name of the configuration file
 
-=head1 ADDING DIRECTORIES
+=head1 NAVIGATION
+
+To naviate your directory structure I<jump> must be integrate with your shell.
+
+TBD
+
+=head1 COMMANDS
+
+=head2 Adding directories
 
   $> j --add path [weight]
 
-path id added to the directory with optional weight. If no weight is given,
+path is added to the directory with optional weight. If no weight is given,
 a default weight is assigned. If the entry already exist, the weight is
 added to the existing entry. 
 
 Only directories can be added to the database.
 
-Paths matching entries in $config->[black_listed_directories] are silently 
+Paths matching entries in config I<black_listed_directories> are silently 
 ignored
-
-=head1 OTHER FUNCTIONALITY
 
 =head2 Removing entries
 
@@ -149,7 +157,7 @@ Paths are matched in this order:
 
 =item * existing full path
 
-option I<no_direct_path> disables this matching
+Setting configuration I<no_direct_path> disables this matching
 
 =item * match directory under the current working directory
 
@@ -159,7 +167,7 @@ this allow Jump to mimic I<cd>'s behavior.
 
 will return /A even though /path_part/path_part2/A is a database entry with weight:10 
  
-option I<no_direct_path> disables this matching
+Setting configuration I<no_direct_path> disables this matching
 
 =item * full match last directory of database entry
 
@@ -185,14 +193,13 @@ will return /path_part/path_part2/C which sorts before /path_part/path_part3/C
 
 will return  /path_part/path_part3/C which is the entry containing I<path> and has the heaviest weight 
  
-
 =item * match sub directory of cwd
 
   $> jump --search E
 
 will return /subdir/E  
 
-option I<no_cwd> disables this matching
+Seting configuration I<no_cwd> disables this matching
  
 =item * match sub directory of a db entry
 
@@ -200,7 +207,7 @@ option I<no_cwd> disables this matching
 
 will return  /path_part/path_part3/C/F. /path_part/path_part2/F is not under a database entry 
 
-option I<no_sub_db> disables this matching
+Setting configuration I<no_sub_db> disables this matching
 
 =back
 
@@ -246,8 +253,7 @@ sub run
 {
 my (@command_line_arguments) = @_ ;
 
-my ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete) ;
-my ($no_direct_path, $no_cwd, $no_sub_db) ;
+my ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete, $generate_bash_completion) ;
 
 {
 local @ARGV = @command_line_arguments ;
@@ -258,10 +264,6 @@ die 'Error parsing options!'unless
 		'search' => \$search,
 		'complete' => \$complete,
 
-		'no_direct_path' => \$no_direct_path, 
-		'no_cwd' => \$no_cwd,
-		'no_sub_db' => \$no_sub_db,
-
 		'a|add' => \$add,
 		'r|remove' => \$remove,
 		'remove_all' => \$remove_all,
@@ -271,22 +273,7 @@ die 'Error parsing options!'unless
 		'show_setup_files' => \$show_setup_files,
 		'v|V|version' => \$version,
                 'h|help' => \&show_help, 
-                
-                'dump_options' => 
-                        sub 
-                                {
-                                print join "\n", map {"-$_"} 
-                                        qw(
-                                        search complete
-					no_direct_path no_cwd no_sub_db
-					add remove remove_all
-					show_database
-					show_setup_files version help
-                                        ) ;
-                                        
-                                exit(0) ;
-                                },
-
+		'generate_bash_completion' => \$generate_bash_completion,
                 ) ;
 
 @command_line_arguments = @ARGV ;
@@ -295,6 +282,26 @@ die 'Error parsing options!'unless
 # warning, what if multipe commands are given on the command line, jump will run them at the same time
 	
 warn 'Jump: Error: no command given' unless grep {defined $_} ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete) ;
+
+generate_bash_completion
+	(
+	qw(
+		search
+		complete
+
+		add
+		remove
+		remove_all
+
+		show_database
+
+		show_setup_files
+		version
+                help
+		generate_bash_completion
+		
+		)
+	) if $generate_bash_completion ;
 
 my @results;
 
@@ -348,6 +355,8 @@ return (@matches) ;
 sub find_closest_match
 {
 my ($index, @paths) = @_ ;
+
+return unless @paths ;
 	
 my $cwd = cwd() ;
 
@@ -776,5 +785,172 @@ print STDERR `perldoc App::Term::Jump`  or warn 'Can\'t display help!' ; ## no c
 exit(1) ;
 }
 
+
+#------------------------------------------------------------------------------------------------------------------------
+
+sub generate_bash_completion
+{
+	
+=head2 [P]generate_bash_completion(@command_options)
+
+The generated completion is in two parts:
+
+A perl script used to generate  the completion (output on stdout) and a shell script that you must source (output on stderr).
+
+ $> my_app -bash 1> my_app_perl_completion.pl 2> my_app_regiter_completion
+
+Direction about how to use the completion scritp is contained in the generated script.
+
+I<Arguments> - @command_options - list of the optionsthe command accepts
+
+I<Returns> - Nothing - exits with status code B<1> after emitting the completion script on stdout
+
+I<Exceptions> -  None - Exits the program.
+
+=cut
+
+my @command_options = @_ ;
+my @options ;
+
+use English;
+use File::Basename ;
+my ($basename, $path, $ext) = File::Basename::fileparse($PROGRAM_NAME, ('\..*')) ;
+my $application_name =  $basename . $ext ;
+
+local $| = 1 ;
+
+my $complete_script =  <<"COMPLETION_SCRIPT" ;
+
+#The perl script has to be executable and somewhere in the path.                                                         
+#This script was generated using used your application name
+
+#Add the following line in your I<~/.bashrc> or B<source> them:
+
+_${application_name}_perl_completion()
+{                     
+local old_ifs="\${IFS}"
+local IFS=\$'\\n';      
+COMPREPLY=( \$(${application_name}_perl_completion.pl \${COMP_CWORD} \${COMP_WORDS[\@]}) );
+IFS="\${old_ifs}"                                                       
+
+return 1;
+}        
+
+complete -o default -F _${application_name}_perl_completion $application_name
+COMPLETION_SCRIPT
+
+print {*STDERR} $complete_script ;
+
+print {*STDOUT} <<'COMPLETION_SCRIPT' ;
+#! /usr/bin/perl                                                                       
+
+=pod
+
+I<Arguments> received from bash:
+
+=over 2
+
+=item * $index - index of the command line argument to complete (starting at '1')
+
+=item * $command - a string containing the command name
+
+=item * \@argument_list - list of the arguments typed on the command line
+
+=back
+
+You return possible completion you want separated by I<\n>. Return nothing if you
+want the default bash completion to be run which is possible because of the <-o defaul>
+passed to the B<complete> command.
+
+Note! You may have to re-run the B<complete> command after you modify your perl script.
+
+=cut
+
+use strict;
+use Tree::Trie;
+
+my ($argument_index, $command, @arguments) = @ARGV ;
+
+$argument_index-- ;
+my $word_to_complete = $arguments[$argument_index] ;
+
+my %top_level_completions = # name => takes a file 0/1
+	(	
+COMPLETION_SCRIPT
+
+print {*STDOUT}  join("\n", @options) . "\n" ;
+	
+print {*STDOUT} <<'COMPLETION_SCRIPT' ;
+	) ;
+		
+my %commands_and_their_options =
+	(
+COMPLETION_SCRIPT
+
+print {*STDOUT} join("\n", @command_options) . "\n" ;
+
+print {*STDOUT} <<'COMPLETION_SCRIPT' ;
+	) ;
+	
+my @commands = (sort keys %commands_and_their_options) ;
+my %commands = map {$_ => 1} @commands ;
+my %top_level_completions_taking_file = map {$_ => 1} grep {$top_level_completions{$_}} keys %top_level_completions ;
+
+my $command_present = 0 ;
+for my $argument (@arguments)
+	{
+	if(exists $commands{$argument})
+		{
+		$command_present = $argument ;
+		last ;
+		}
+	}
+
+my @completions ;
+if($command_present)
+	{
+	# complete differently depending on $command_present
+	push @completions, @{$commands_and_their_options{$command_present}}  ;
+	}
+else
+	{
+	if(defined $word_to_complete)
+		{
+		@completions = (@commands, keys %top_level_completions) ;
+		}
+	else
+		{
+		@completions = @commands ;
+		}
+	}
+
+if(defined $word_to_complete)
+        {
+	my $trie = new Tree::Trie;
+	$trie->add(@completions) ;
+
+        print join("\n", $trie->lookup($word_to_complete) ) ;
+        }
+else
+	{
+	my $last_argument = $arguments[-1] ;
+	
+	if(exists $top_level_completions_taking_file{$last_argument})
+		{
+		# use bash file completiong or we could pass the files ourselves
+		#~ use File::Glob qw(bsd_glob) ;
+		#~ print join "\n", bsd_glob('M*.*') ;
+		}
+	else
+		{
+		print join("\n", @completions)  unless $command_present ;
+		}
+	}
+
+COMPLETION_SCRIPT
+
+exit(0) ;
+
+}
 
 

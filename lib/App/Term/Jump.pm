@@ -249,6 +249,8 @@ will return a list of matches that an be used to integrate with the I<cd> comman
 
 #------------------------------------------------------------------------------------------------------------------------
 
+our $debug ;
+
 sub run
 {
 my (@command_line_arguments) = @_ ;
@@ -274,6 +276,8 @@ die 'Error parsing options!'unless
 		'v|V|version' => \$version,
                 'h|help' => \&show_help, 
 		'generate_bash_completion' => \$generate_bash_completion,
+
+		'debug' => \$debug,
                 ) ;
 
 @command_line_arguments = @ARGV ;
@@ -281,7 +285,8 @@ die 'Error parsing options!'unless
 
 # warning, what if multipe commands are given on the command line, jump will run them at the same time
 	
-warn 'Jump: Error: no command given' unless grep {defined $_} ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete) ;
+warn 'Jump: Error: no command given' unless 
+	grep {defined $_} ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete, $generate_bash_completion) ;
 
 generate_bash_completion
 	(
@@ -299,7 +304,8 @@ generate_bash_completion
 		version
                 help
 		generate_bash_completion
-		
+	
+		debug	
 		)
 	) if $generate_bash_completion ;
 
@@ -373,20 +379,25 @@ my (@direct_matches, @directory_full_matches, @directory_partial_matches, @path_
 
 my ($config) = get_config() ;
 my $db = read_db() ;
+	
+warn "\nApp::Term::Jump::find_closest_match:\n" if $debug ;
 
+warn "matching direct path\n" if $debug ;
 if(1 == @paths && !$config->{no_direct_path})
 	{
 	my $path_to_match = $paths[0] ;
 
 	if($path_to_match =~ m[^/] && -d $path_to_match)
 		{
-		# matches full path in file system
+		warn "matches full path in file system\n" if $debug ;
+
 		$matched++ ;
 		push @direct_matches, {path => $path_to_match, weight => 0, matches => 'full path in file system'} ;
 		}
 	elsif(-d $cwd . '/' . $path_to_match)
 		{
-		# matches full path in file system
+		warn "matches directory under cwd\n" if $debug ;
+
 		$matched++ ;
 		
 		$path_to_match =~ s[^\./+][] ;
@@ -399,6 +410,8 @@ my $ignore_case = $config->{ignore_case} ? '(?i)' : '' ;
 
 if(0 == $matched)
 	{
+	warn "matching directories in database\n" if $debug ;
+
 	for my $db_entry (keys %{$db})
 		{
 		my @directories = File::Spec->splitdir($db_entry) ;
@@ -410,10 +423,10 @@ if(0 == $matched)
 		# match end directory
 		if($directories[-1] =~ /$ignore_case^$end_directory_to_match$/)
 			{
-			# matches the end directory completely
-
 			if($db_entry_without_end_directory =~ $path_to_match_without_end_directory)
 				{
+				warn "matches end directory in db entry\n" if $debug ;
+
 				$matched++ ;
 				push @directory_full_matches, 
 					{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'end directory' } ;
@@ -421,10 +434,10 @@ if(0 == $matched)
 			}
 		elsif($directories[-1] =~ /$ignore_case$end_directory_to_match/)
 			{
-			# matches part of the end diretory
-
 			if($db_entry_without_end_directory =~ $path_to_match_without_end_directory)
 				{
+				warn "matches part of end directory in db entry\n" if $debug ;
+
 				$matched++ ;
 				push @directory_partial_matches,
 					{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of end directory'} ;
@@ -432,7 +445,8 @@ if(0 == $matched)
 			}
 		elsif($db_entry =~ /$ignore_case$path_to_match/)
 			{
-			# matches part of the path
+			warn "matches part of path in db entry\n" if $debug ;
+			
 			$matched++ ;
 			push @path_partial_matches, 
 				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of path'} ;
@@ -455,7 +469,7 @@ if(0 == $matched)
 	
 if(0 == $matched && ! $config->{no_cwd})
 	{
-	# match directories under currend working directory 
+	warn "matching directories under currend working directory\n" if $debug ; 
 
 	for my $directory (File::Find::Rule->directory()->in($cwd))
 		{
@@ -464,6 +478,8 @@ if(0 == $matched && ! $config->{no_cwd})
 
 		if($sub_directory =~ $cwd_path_to_match)
 			{
+			warn "matches sub directory under cwd\n" if $debug ;
+
 			my @directories = File::Spec->splitdir($directory) ;
 			my $cumulated_path_weight = get_paths_weight($db, @directories) ;
 
@@ -478,7 +494,7 @@ if(0 == $matched && ! $config->{no_cwd})
 
 if(0 == $matched && ! $config->{no_sub_db})
 	{
-	# match directories under entries in db
+	warn "matching directories under database entries\n" if $debug ; 
  
 	for my $db_entry (keys %{$db})
 		{
@@ -494,6 +510,7 @@ if(0 == $matched && ! $config->{no_sub_db})
 			
 			if($sub_directory =~ $path_to_match)
 				{
+				warn "matches sub directory under database entry\n" if $debug ;
 				push @sub_directory_matches, {path => $directory, weight => 1, cumulated_path_weight => $cumulated_path_weight, matches => 'directory under a db entry'} ;
 				} 
 			}
@@ -785,172 +802,8 @@ print STDERR `perldoc App::Term::Jump`  or warn 'Can\'t display help!' ; ## no c
 exit(1) ;
 }
 
-
 #------------------------------------------------------------------------------------------------------------------------
 
-sub generate_bash_completion
-{
-	
-=head2 [P]generate_bash_completion(@command_options)
-
-The generated completion is in two parts:
-
-A perl script used to generate  the completion (output on stdout) and a shell script that you must source (output on stderr).
-
- $> my_app -bash 1> my_app_perl_completion.pl 2> my_app_regiter_completion
-
-Direction about how to use the completion scritp is contained in the generated script.
-
-I<Arguments> - @command_options - list of the optionsthe command accepts
-
-I<Returns> - Nothing - exits with status code B<1> after emitting the completion script on stdout
-
-I<Exceptions> -  None - Exits the program.
-
-=cut
-
-my @command_options = @_ ;
-my @options ;
-
-use English;
-use File::Basename ;
-my ($basename, $path, $ext) = File::Basename::fileparse($PROGRAM_NAME, ('\..*')) ;
-my $application_name =  $basename . $ext ;
-
-local $| = 1 ;
-
-my $complete_script =  <<"COMPLETION_SCRIPT" ;
-
-#The perl script has to be executable and somewhere in the path.                                                         
-#This script was generated using used your application name
-
-#Add the following line in your I<~/.bashrc> or B<source> them:
-
-_${application_name}_perl_completion()
-{                     
-local old_ifs="\${IFS}"
-local IFS=\$'\\n';      
-COMPREPLY=( \$(${application_name}_perl_completion.pl \${COMP_CWORD} \${COMP_WORDS[\@]}) );
-IFS="\${old_ifs}"                                                       
-
-return 1;
-}        
-
-complete -o default -F _${application_name}_perl_completion $application_name
-COMPLETION_SCRIPT
-
-print {*STDERR} $complete_script ;
-
-print {*STDOUT} <<'COMPLETION_SCRIPT' ;
-#! /usr/bin/perl                                                                       
-
-=pod
-
-I<Arguments> received from bash:
-
-=over 2
-
-=item * $index - index of the command line argument to complete (starting at '1')
-
-=item * $command - a string containing the command name
-
-=item * \@argument_list - list of the arguments typed on the command line
-
-=back
-
-You return possible completion you want separated by I<\n>. Return nothing if you
-want the default bash completion to be run which is possible because of the <-o defaul>
-passed to the B<complete> command.
-
-Note! You may have to re-run the B<complete> command after you modify your perl script.
-
-=cut
-
-use strict;
-use Tree::Trie;
-
-my ($argument_index, $command, @arguments) = @ARGV ;
-
-$argument_index-- ;
-my $word_to_complete = $arguments[$argument_index] ;
-
-my %top_level_completions = # name => takes a file 0/1
-	(	
-COMPLETION_SCRIPT
-
-print {*STDOUT}  join("\n", @options) . "\n" ;
-	
-print {*STDOUT} <<'COMPLETION_SCRIPT' ;
-	) ;
-		
-my %commands_and_their_options =
-	(
-COMPLETION_SCRIPT
-
-print {*STDOUT} join("\n", @command_options) . "\n" ;
-
-print {*STDOUT} <<'COMPLETION_SCRIPT' ;
-	) ;
-	
-my @commands = (sort keys %commands_and_their_options) ;
-my %commands = map {$_ => 1} @commands ;
-my %top_level_completions_taking_file = map {$_ => 1} grep {$top_level_completions{$_}} keys %top_level_completions ;
-
-my $command_present = 0 ;
-for my $argument (@arguments)
-	{
-	if(exists $commands{$argument})
-		{
-		$command_present = $argument ;
-		last ;
-		}
-	}
-
-my @completions ;
-if($command_present)
-	{
-	# complete differently depending on $command_present
-	push @completions, @{$commands_and_their_options{$command_present}}  ;
-	}
-else
-	{
-	if(defined $word_to_complete)
-		{
-		@completions = (@commands, keys %top_level_completions) ;
-		}
-	else
-		{
-		@completions = @commands ;
-		}
-	}
-
-if(defined $word_to_complete)
-        {
-	my $trie = new Tree::Trie;
-	$trie->add(@completions) ;
-
-        print join("\n", $trie->lookup($word_to_complete) ) ;
-        }
-else
-	{
-	my $last_argument = $arguments[-1] ;
-	
-	if(exists $top_level_completions_taking_file{$last_argument})
-		{
-		# use bash file completiong or we could pass the files ourselves
-		#~ use File::Glob qw(bsd_glob) ;
-		#~ print join "\n", bsd_glob('M*.*') ;
-		}
-	else
-		{
-		print join("\n", @completions)  unless $command_present ;
-		}
-	}
-
-COMPLETION_SCRIPT
-
-exit(0) ;
-
-}
+1;
 
 

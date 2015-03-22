@@ -2,6 +2,8 @@
 # This is Todo.txt #
 #------------------#
 
+add search options on the command line and a config when using the library
+ 
 --alias the_alias directory|cwd
 
 --debug/seach info

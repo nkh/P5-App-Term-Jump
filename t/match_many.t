@@ -336,3 +336,36 @@ END_OF_YAML
 	) ;
 
 
+
+
+jump_test
+	(
+	name => 'search',
+
+	directories_and_db => <<'END_OF_YAML' ,
+
+A:
+ BCDE_FG: 
+  in_db: 1
+ BCDE_HI:
+  in_db: 1
+
+END_OF_YAML
+
+ 	tests =>
+		[
+		{
+		name => 'no  match',
+		command => q{ run('--search', 'B', 'C') },
+		captured_output_expected => ['TD/A/BCDE_FG'],
+		matches_expected => 
+			[
+			'TD/A/BCDE_FG',
+			'TD/A/BCDE_HI',
+			],
+		} ,
+
+#---------------
+		 ],
+	) ;
+

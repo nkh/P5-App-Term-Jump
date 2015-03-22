@@ -58,14 +58,17 @@ if(defined $word_to_complete && $word_to_complete =~ /^-/)
         }
 else
         {
+	# use jump command line parser
 	# complete based on command
-	# complete based on completion to some input or no input ($word to complete defined)
 		qw(
 		search
 		complete
-		add
 		remove
-		remove_all
+		
+		add  bash completion
+		
+		below no completion:
+		remove_all 
 		show_database
 		show_setup_files
 		version
@@ -74,18 +77,15 @@ else
 		) ;
 
 
-	# no command , IE: cdd
-	# potential completion on all the argument
+#	@arguments = grep { ! /^-/ } @arguments ;
 
-        # todo: hilight the arguments in the paths found
-	
-	@arguments = grep { ! /^-/ } @arguments ;
+	# no input do nothing, thus bash completion
 
-	$App::Term::Jump::debug++ ;
-	my @completions = App::Term::Jump::complete(@arguments) ;
+	#$App::Term::Jump::debug++ ;
+	my @completions = App::Term::Jump::run(@arguments) ;
 
-	use Data::TreeDumper ;
-	print STDERR DumpTree {command => $command, index => $argument_index, arguments => \@arguments, completions => \@completions} ;
+	#use Data::TreeDumper ;
+	#print STDERR DumpTree {command => $command, index => $argument_index, arguments => \@arguments, completions => \@completions} ;
 
 	if(0 == @completions)
 		{
@@ -93,32 +93,14 @@ else
 		}
 	elsif(1 == @completions)
 		{
-		if(1 == @arguments)
-			{
-			if($arguments[0] eq $completions[0]{path})
-				{
-				#already right on the command line
-				print "Single match\n" ;
-				}
-			else
-				{
-				print $_->{path} . "\n" for @completions ;
-				}
-			}
-		else
-			{
-			# single possible completion for multiple arguments on the command line
-
-			# we're done searching, need to tell user
-			print "2 Single match:\n$completions[0]{path}" ;
-			}
-
+		print "1 match\n$completions[0]{path}" ;
 		}
 	else
 		{
+		print scalar(@completions) . " matches:\n" ;
 		print $_->{path} . "\n" for @completions ;
 		}
 
-        }
+	}
 
 

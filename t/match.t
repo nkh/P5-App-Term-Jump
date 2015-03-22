@@ -177,6 +177,7 @@ END_OF_YAML
 		matches_expected => 
 			[
 			'TD/C/CC_2/CHARLIE_CCC',
+			'TD/D/DD_1/CHARLIE_DDD',
 			'TD/D/DD_1/CHARLIE_DDD/DDDD',
 			],
 		} ,
@@ -184,36 +185,48 @@ END_OF_YAML
 		{
 		name => 'partial path match, single match',
 		command => q{ run('--search', 'ALPHA') },
-		captured_output_expected => ['TD/D/DD_1/ALPHA_DDD/DDDD'],
-		matches_expected => ['TD/D/DD_1/ALPHA_DDD/DDDD'],
+		captured_output_expected => 
+			[
+			'TD/D/DD_1/ALPHA_DDD',
+			],
+		matches_expected => 
+			[
+			'TD/D/DD_1/ALPHA_DDD',
+			'TD/D/DD_1/ALPHA_DDD/DDDD',
+			],
 		} ,
 #---------------
 		{
 		name => 'multiple partial path match, different  weight',
 		command => q{ run('--search', 'BRAVO') },
-		captured_output_expected => ['TD/D/BRAVO_DD/DDD'],
+		captured_output_expected => ['TD/C/BRAVO'],
 		matches_expected => 
 			[
+			'TD/C/BRAVO',
+			'TD/D/BRAVO_DD',
 			'TD/D/BRAVO_DD/DDD',
 			'TD/C/BRAVO/CCC',
 			],
-		} ,
+		},
 		{
 		name => 'multiple partial path match, same weight, different cumulated weight',
 		command => q{ run('--search', 'DELTA') },
-		captured_output_expected => ['TD/E/EE_2/DELTA_EEE_2/EEEE_2'],
+		captured_output_expected => ['TD/E/EE_2/DELTA_EEE_2'],
 		matches_expected => 
 			[
+			'TD/E/EE_2/DELTA_EEE_2',
+			'TD/E/EE_1/DELTA_EEE_1',
 			'TD/E/EE_2/DELTA_EEE_2/EEEE_2',
 			'TD/E/EE_1/DELTA_EEE_1/EEEE_1',
 			],
-		} ,
+		}, 
 		{
 		name => 'multiple partial path match, same weight, same cumulated weight, different name',
 		command => q{ run('--search', 'ECHO') },
-		captured_output_expected => ['TD/E/EE_3/ECHO/ABC'],
+		captured_output_expected => ['TD/E/EE_3/ECHO'],
 		matches_expected => 
 			[
+			'TD/E/EE_3/ECHO',
 			'TD/E/EE_3/ECHO/ABC',
 			'TD/E/EE_3/ECHO/XYZ',
 			],

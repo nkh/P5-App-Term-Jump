@@ -245,8 +245,12 @@ END_OF_YAML
 		{
 		name => 'partial path match, single match',
 		command => q{ run('--search', 'D', 'ALPHA') },
-		captured_output_expected => ['TD/D/DD_1/ALPHA_DDD/DDDD'],
-		matches_expected => ['TD/D/DD_1/ALPHA_DDD/DDDD'],
+		captured_output_expected => ['TD/D/DD_1/ALPHA_DDD'],
+		matches_expected => 
+			[
+			'TD/D/DD_1/ALPHA_DDD',
+			'TD/D/DD_1/ALPHA_DDD/DDDD'
+			],
 		} ,
 
 		{
@@ -262,9 +266,11 @@ END_OF_YAML
 		{
 		name => 'partial path match, same weight, different cumulated weight',
 		command => q{ run('--search', 'E', 'DELTA') },
-		captured_output_expected => ['TD/E/EE_2/DELTA_EEE_2/EEEE_2'],
+		captured_output_expected => ['TD/E/EE_2/DELTA_EEE_2'],
 		matches_expected => 
 			[
+			'TD/E/EE_2/DELTA_EEE_2',
+			'TD/E/EE_1/DELTA_EEE_1',
 			'TD/E/EE_2/DELTA_EEE_2/EEEE_2',
 			'TD/E/EE_1/DELTA_EEE_1/EEEE_1',
 			],
@@ -273,9 +279,10 @@ END_OF_YAML
 		{
 		name => 'partial path match, same weight, same cumulated weight, different name',
 		command => q{ run('--search', 'EE', 'ECHO') },
-		captured_output_expected => ['TD/E/EE_3/ECHO/ABC'],
+		captured_output_expected => ['TD/E/EE_3/ECHO'],
 		matches_expected => 
 			[
+			'TD/E/EE_3/ECHO',
 			'TD/E/EE_3/ECHO/ABC',
 			'TD/E/EE_3/ECHO/XYZ',
 			],
@@ -316,8 +323,6 @@ END_OF_YAML
 			[
 			'TD/A/B_4/JULIETTE',
 			'TD/A/B/C/D/F/JULIETTE',
-			'TD/A/B/C/D/F/JULIETTE',
-			'TD/A/B_4/JULIETTE',
 			] ,
 		} ,
 
@@ -355,7 +360,7 @@ END_OF_YAML
  	tests =>
 		[
 		{
-		name => 'no  match',
+		name => 'match multi in end directory name',
 		command => q{ run('--search', 'B', 'C') },
 		captured_output_expected => ['TD/A/BCDE_FG'],
 		matches_expected => 
@@ -366,6 +371,17 @@ END_OF_YAML
 		} ,
 
 #---------------
+		{
+		name => 'match mlti in end directoy pth and name',
+		command => q{ run('--search', 'A', 'B', 'C') },
+		captured_output_expected => ['TD/A/BCDE_FG'],
+		matches_expected => 
+			[
+			'TD/A/BCDE_FG',
+			'TD/A/BCDE_HI',
+			],
+		} ,
+
 		 ],
 	) ;
 

@@ -211,13 +211,6 @@ Setting configuration I<no_sub_db> disables this matching
 
 =back
 
-# grep all paths in the filesystem
-# if option is set
-# if option to ask is set
-# if answer is positive
-# do we stop at first match?
-
- 
 =head2 Matching with multiple path parts
 
   $> jump --search C
@@ -255,7 +248,7 @@ sub run
 {
 my (@command_line_arguments) = @_ ;
 
-my ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete, $generate_bash_completion) ;
+my ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete) ;
 
 {
 local @ARGV = @command_line_arguments ;
@@ -275,9 +268,8 @@ die 'Error parsing options!'unless
 		'show_setup_files' => \$show_setup_files,
 		'v|V|version' => \$version,
                 'h|help' => \&show_help, 
-		'generate_bash_completion' => \$generate_bash_completion,
 
-		'debug' => \$debug,
+		'd|debug' => \$debug,
                 ) ;
 
 @command_line_arguments = @ARGV ;
@@ -285,29 +277,8 @@ die 'Error parsing options!'unless
 
 # warning, what if multipe commands are given on the command line, jump will run them at the same time
 	
-warn 'Jump: Error: no command given' unless 
-	grep {defined $_} ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete, $generate_bash_completion) ;
-
-generate_bash_completion
-	(
-	qw(
-		search
-		complete
-
-		add
-		remove
-		remove_all
-
-		show_database
-
-		show_setup_files
-		version
-                help
-		generate_bash_completion
-	
-		debug	
-		)
-	) if $generate_bash_completion ;
+warn "\nJump: Error: no command given" unless 
+	grep {defined $_} ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete) ;
 
 my @results;
 
@@ -366,12 +337,22 @@ return unless @paths ;
 	
 my $cwd = cwd() ;
 
+warn "\nApp::Term::Jump::find_closest_match:\n" if $debug ;
+
 my $path_to_match = join('.*', @paths) ;
 my $end_directory_to_match = $paths[-1] ;
 my $path_to_match_without_end_directory =  @paths > 1 ? join('.*', @paths[0 .. $#paths-1]) : qr// ;
 $path_to_match_without_end_directory =~ s[^\./][$cwd] ;
 
-my $matched = 0 ;
+use Data::TreeDumper ;
+warn DumpTree
+	{
+	paths => \@paths,
+	path => $path_to_match_without_end_directory,
+	end_directory => $end_directory_to_match,
+	} if $debug ;
+
+my %matches ;
 
 # find possible approximations and jumps, including minor path jumps
 
@@ -380,8 +361,6 @@ my (@direct_matches, @directory_full_matches, @directory_partial_matches, @path_
 my ($config) = get_config() ;
 my $db = read_db() ;
 	
-warn "\nApp::Term::Jump::find_closest_match:\n" if $debug ;
-
 warn "matching direct path\n" if $debug ;
 if(1 == @paths && !$config->{no_direct_path})
 	{
@@ -391,83 +370,89 @@ if(1 == @paths && !$config->{no_direct_path})
 		{
 		warn "matches full path in file system\n" if $debug ;
 
-		$matched++ ;
-		push @direct_matches, {path => $path_to_match, weight => 0, matches => 'full path in file system'} ;
+		push @direct_matches, {path => $path_to_match, weight => 0, matches => 'full path in file system'} 
+			unless exists $matches{$path_to_match} ;
+
+		$matches{$path_to_match}++ ;
 		}
 	elsif(-d $cwd . '/' . $path_to_match)
 		{
 		warn "matches directory under cwd\n" if $debug ;
 
-		$matched++ ;
-		
 		$path_to_match =~ s[^\./+][] ;
 		$path_to_match =~ s[^/+][] ;
-		push @direct_matches, {path => $path_to_match, weight => 0, matches => 'directory under cwd'} ;
+		
+		push @direct_matches, {path => $path_to_match, weight => 0, matches => 'directory under cwd'} 
+			unless exists $matches{$path_to_match} ;
+		
+		$matches{$path_to_match}++ ;
 		}
 	}
 
 my $ignore_case = $config->{ignore_case} ? '(?i)' : '' ;
 
-if(0 == $matched)
+warn "matching directories in database\n" if $debug ;
+for my $db_entry (keys %{$db})
 	{
-	warn "matching directories in database\n" if $debug ;
+	my @directories = File::Spec->splitdir($db_entry) ;
+	my $db_entry_end_directory = $directories[-1] ;
 
-	for my $db_entry (keys %{$db})
+	my $weight = $db->{$db_entry} ;
+	my $cumulated_path_weight = get_paths_weight($db, @directories) ;	
+
+	# match end directory
+	if($db_entry_end_directory =~ /$ignore_case^$end_directory_to_match$/)
 		{
-		my @directories = File::Spec->splitdir($db_entry) ;
-		my $db_entry_without_end_directory = join('/', @directories[0 .. $#directories-1]) ;
-
-		my $weight = $db->{$db_entry} ;
-		my $cumulated_path_weight = get_paths_weight($db, @directories) ;	
-
-		# match end directory
-		if($directories[-1] =~ /$ignore_case^$end_directory_to_match$/)
+		if($db_entry =~  /$ignore_case$path_to_match/)
 			{
-			if($db_entry_without_end_directory =~ $path_to_match_without_end_directory)
-				{
-				warn "matches end directory in db entry\n" if $debug ;
+			warn "matches end directory in db entry\n" if $debug ;
 
-				$matched++ ;
-				push @directory_full_matches, 
-					{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'end directory' } ;
-				}
-			}
-		elsif($directories[-1] =~ /$ignore_case$end_directory_to_match/)
-			{
-			if($db_entry_without_end_directory =~ $path_to_match_without_end_directory)
-				{
-				warn "matches part of end directory in db entry\n" if $debug ;
-
-				$matched++ ;
-				push @directory_partial_matches,
-					{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of end directory'} ;
-				}
-			}
-		elsif($db_entry =~ /$ignore_case$path_to_match/)
-			{
-			warn "matches part of path in db entry\n" if $debug ;
+			push @directory_full_matches, 
+				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'end directory' } 
+					unless exists $matches{$db_entry} ;
 			
-			$matched++ ;
-			push @path_partial_matches, 
-				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of path'} ;
+			$matches{$db_entry}++ ;
 			}
 		}
+	elsif($db_entry_end_directory =~ /$ignore_case$end_directory_to_match/)
+		{
+		if($db_entry =~  /$ignore_case$path_to_match/)
+			{
+			warn "matches part of end directory in db entry\n" if $debug ;
 
-	# sort by path, path weight, alphabetically
-	@directory_full_matches = 
-		sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
-			@directory_full_matches ;
+			push @directory_partial_matches,
+				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of end directory'} 
+					unless exists $matches{$db_entry} ;
 
-	@directory_partial_matches = 
-		sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
-			@directory_partial_matches ;
+			$matches{$db_entry}++ ;
+			}
+		}
+	elsif($db_entry =~ /$ignore_case$path_to_match/)
+		{
+		warn "matches part of path in db entry\n" if $debug ;
+		
+		push @path_partial_matches, 
+			{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of path'} 
+					unless exists $matches{$db_entry} ;
+			
+		$matches{$db_entry}++ ;
+		}
 
-	@path_partial_matches = 
-		sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
-			@path_partial_matches ;
+# sort by path, path weight, alphabetically
+@directory_full_matches = 
+	sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
+		@directory_full_matches ;
+
+@directory_partial_matches = 
+	sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
+		@directory_partial_matches ;
+
+@path_partial_matches = 
+	sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
+		@path_partial_matches ;
 	}
 	
-if(0 == $matched && ! $config->{no_cwd})
+if(! $config->{no_cwd})
 	{
 	warn "matching directories under currend working directory\n" if $debug ; 
 
@@ -483,47 +468,43 @@ if(0 == $matched && ! $config->{no_cwd})
 			my @directories = File::Spec->splitdir($directory) ;
 			my $cumulated_path_weight = get_paths_weight($db, @directories) ;
 
-			push @cwd_sub_directory_matches, {path => $directory, weight => 0, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under cwd'} ;
+			push @cwd_sub_directory_matches, {path => $directory, weight => 0, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under cwd'}
+				unless exists $matches{$directory} ;
+
+			$matches{$directory}++ ;
 			} 
 		}
 	
 	@cwd_sub_directory_matches = sort {$b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} @cwd_sub_directory_matches ;
-	
-	$matched++ if @cwd_sub_directory_matches ;
 	}
 
-if(0 == $matched && ! $config->{no_sub_db})
+if(! $config->{no_sub_db})
 	{
 	warn "matching directories under database entries\n" if $debug ; 
  
-	for my $db_entry (keys %{$db})
+	for my $db_entry (sort {length($b) <=> length($a) } keys %{$db})
 		{
-		my @directories = File::Spec->splitdir($db_entry) ;
-		my $db_entry_without_end_directory = join('/', @directories[0 .. $#directories-1]) ;
-		
 		my $weight = $db->{$db_entry} ;
-		my $cumulated_path_weight = get_paths_weight($db, @directories) ;	
+		my $cumulated_path_weight = get_paths_weight($db, File::Spec->splitdir($db_entry)) ;	
 
 		for my $directory (File::Find::Rule->directory()->in($db_entry))
 			{
-			my $sub_directory = $directory =~ s[^$db_entry_without_end_directory][]r ;
-			
-			if($sub_directory =~ $path_to_match)
+			if($directory =~ $path_to_match)
 				{
 				warn "matches sub directory under database entry\n" if $debug ;
-				push @sub_directory_matches, {path => $directory, weight => 1, cumulated_path_weight => $cumulated_path_weight, matches => 'directory under a db entry'} ;
+				push @sub_directory_matches, 
+					{path => $directory, weight => 1, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under a db entry'} 
+						unless exists $matches{$directory} ;
+
+				$matches{$directory}++ ;
 				} 
 			}
 		}  
-	
+
 	@sub_directory_matches = 
 		sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
-		@sub_directory_matches ;
-	
-	$matched++ ;
+			@sub_directory_matches ;
 	}
-
-# grep all paths in the filesystem
 
 return (@direct_matches, @directory_full_matches, @directory_partial_matches, @cwd_sub_directory_matches, @sub_directory_matches, @path_partial_matches) ;
 }

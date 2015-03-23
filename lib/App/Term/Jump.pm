@@ -291,7 +291,7 @@ warn "\nJump: Error: no command given" unless
 
 my @results;
 
-remove_all() if($remove_all) ;
+remove_all(@command_line_arguments) if($remove_all) ;
 remove(@command_line_arguments) if($remove) ;
 
 add(@command_line_arguments) if($add) ;
@@ -581,13 +581,34 @@ return ;
 
 sub remove_all
 {
-my ($weight, $path) = check_weight_and_path(@_) ;
+my %new_db ;
 
-#todo: if argument is given, remove only matching entries
+if(0 == @_)
+	{
+	# no argument, remove all entries
+	}
+else
+	{
+	my $db = read_db() ;
 
-my %empty_db ;
+	for my $key (keys %{$db})
+		{
+		my $delete_key = 0 ;
 
-write_db(\%empty_db) ;
+		for my $delete_regex (@_)
+			{
+			if($key =~ $delete_regex)
+				{
+				$delete_key++ ;
+				last ;
+				}
+			}
+	
+		$new_db{$key} = $db->{$key} unless $delete_key ;
+		}			
+	}
+
+write_db(\%new_db) ;
 
 return ;
 }

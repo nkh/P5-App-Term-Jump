@@ -4,6 +4,8 @@
 
 add search options on the command line and a config when using the library
  
+--show_database regex
+
 --alias the_alias directory|cwd
 
 --debug/seach info

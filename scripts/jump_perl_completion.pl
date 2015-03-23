@@ -63,12 +63,12 @@ else
 		search
 		complete
 		remove
+		remove_all 
 		) ;
 	
 	my @without_completion =
 		qw(
 		add
-		remove_all 
 		show_database
 		show_setup_files
 		version

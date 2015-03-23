@@ -58,16 +58,16 @@ if(defined $word_to_complete && $word_to_complete =~ /^-/)
         }
 else
         {
-	# use jump command line parser
-	# complete based on command
+	my %with_completion = map {("-$_" => 1, "--$_" => 1)}
 		qw(
 		search
 		complete
 		remove
-		
-		add  bash completion
-		
-		below no completion:
+		) ;
+	
+	my @without_completion =
+		qw(
+		add
 		remove_all 
 		show_database
 		show_setup_files
@@ -76,31 +76,43 @@ else
 		generate_bash_completion
 		) ;
 
-
-#	@arguments = grep { ! /^-/ } @arguments ;
-
-	# no input do nothing, thus bash completion
-
-	#$App::Term::Jump::debug++ ;
-	my @completions = App::Term::Jump::run(@arguments) ;
-
-	#use Data::TreeDumper ;
-	#print STDERR DumpTree {command => $command, index => $argument_index, arguments => \@arguments, completions => \@completions} ;
-
-	if(0 == @completions)
+	my $do_completion = grep { exists $with_completion{$_} } @arguments ;
+	
+	if(grep {/-remove/} @arguments)
 		{
-		# no completion
-		}
-	elsif(1 == @completions)
-		{
-		print "1 match\n$completions[0]{path}" ;
-		}
-	else
-		{
-		print scalar(@completions) . " matches:\n" ;
-		print $_->{path} . "\n" for @completions ;
+		#allow completion of db entries only
+
+		$App::Term::Jump::no_direct_path++;
+		$App::Term::Jump::no_cwd++ ;
+		$App::Term::Jump::no_sub_db++ ;
+
+		@arguments = ('.') if 1 == @arguments ; # force completion to whole db if no arguments are given
 		}
 
+	@arguments = grep {! /^-/} @arguments ; # remove commands
+
+	if($do_completion)
+		{
+		#$App::Term::Jump::debug++ ;
+		my @completions = App::Term::Jump::complete(@arguments) ;
+
+		#use Data::TreeDumper ;
+		#print STDERR DumpTree {command => $command, index => $argument_index, arguments => \@arguments, completions => \@completions} ;
+
+		if(0 == @completions)
+			{
+			# no completion
+			}
+		elsif(1 == @completions)
+			{
+			print "1 match\n$completions[0]{path}" ;
+			}
+		else
+			{
+			print scalar(@completions) . " matches:\n" ;
+			print $_->{path} . "\n" for @completions ;
+			}
+		}
 	}
 
 

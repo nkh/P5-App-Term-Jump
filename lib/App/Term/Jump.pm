@@ -50,12 +50,16 @@ command line or integrated with Bash.
   -v|version		show version information and exit
   -h|help		show this help
 
+  -no_direct_path	ignore directories directly under cwd
+  -no_cwd		ignore directories and sub directories under cwd
+  -no_sub_db		ignore directories under the database entries
+
 =head1 FILES
 
   ~/.jump_database      default database
   ~/.jump_config	optional configuration file, a Perl hash format
 
-=head1 CONFIGURATION
+=head1 CONFIGURATION FILE FORMAT
 
 	{
 	black_listed_directories => [string, qr] , # paths matching are not added to db
@@ -243,6 +247,7 @@ will return a list of matches that an be used to integrate with the I<cd> comman
 #------------------------------------------------------------------------------------------------------------------------
 
 our $debug ;
+our ($no_direct_path, $no_cwd, $no_sub_db) ;
 
 sub run
 {
@@ -269,13 +274,17 @@ die 'Error parsing options!'unless
 		'v|V|version' => \$version,
                 'h|help' => \&show_help, 
 
+		'no_direct_path' => \$no_direct_path,
+		'no_cwd' => \$no_cwd,
+		'no_dub_db' => \$no_sub_db,
+
 		'd|debug' => \$debug,
                 ) ;
 
 @command_line_arguments = @ARGV ;
 }
 
-# warning, what if multipe commands are given on the command line, jump will run them at the same time
+# warning, if multipe commands are given on the command line, jump will run them at the same time
 	
 warn "\nJump: Error: no command given" unless 
 	grep {defined $_} ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete) ;
@@ -572,6 +581,10 @@ return ;
 
 sub remove_all
 {
+my ($weight, $path) = check_weight_and_path(@_) ;
+
+#todo: if argument is given, remove only matching entries
+
 my %empty_db ;
 
 write_db(\%empty_db) ;
@@ -646,6 +659,10 @@ if(-f $config_location)
 		warn "couldn't run $config_location"       unless $config;
 		}
 	}
+
+$config->{no_direct_path} = $no_direct_path if defined $no_direct_path ;
+$config->{no_cwd} = $no_cwd if defined $no_cwd ;
+$config->{no_sub_db} = $no_sub_db if defined $no_sub_db ;
 
 return
 	{

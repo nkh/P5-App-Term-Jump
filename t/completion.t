@@ -39,12 +39,7 @@ END_OF_YAML
 			[
 			'TD/A/B',
 			'TD/BETA/B',
-			'TD/BETA/B/C/D/ECHO',
-			'TD/A/B/C',
-			'TD/BETA/B/C',
 			'TD/BETA',
-			'TD/A/B/C/D',
-			'TD/BETA/B/C/D',		
 			],
 		},
 #---------------
@@ -53,7 +48,7 @@ END_OF_YAML
 		name => '', 
 		command => q{ run('--complete', 'ECHO') },
 		weight_expected => 0,
-		weight_path_expected => 2,
+		weight_path_expected => 0,
 		captured_output_expected => 
 			[
 			'TD/BETA/B/C/D/ECHO',

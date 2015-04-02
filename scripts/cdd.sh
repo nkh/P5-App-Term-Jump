@@ -13,3 +13,6 @@ cdd ()
         false;
     fi
 }
+
+complete -o default -F _jump_perl_completion cdd 
+

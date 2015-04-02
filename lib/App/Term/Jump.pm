@@ -379,7 +379,7 @@ if(1 == @paths && !$config->{no_direct_path})
 		{
 		warn "matches full path in file system\n" if $debug ;
 
-		push @direct_matches, {path => $path_to_match, weight => 0, matches => 'full path in file system'} 
+		push @direct_matches, {path => $path_to_match, weight => 0,cumulated_path_weight => 0,  matches => 'full path in file system'} 
 			unless exists $matches{$path_to_match} ;
 
 		$matches{$path_to_match}++ ;
@@ -391,7 +391,7 @@ if(1 == @paths && !$config->{no_direct_path})
 		$path_to_match =~ s[^\./+][] ;
 		$path_to_match =~ s[^/+][] ;
 		
-		push @direct_matches, {path => $path_to_match, weight => 0, matches => 'directory under cwd'} 
+		push @direct_matches, {path => $path_to_match, weight => 0, cumulated_path_weight => 0, matches => 'directory under cwd'} 
 			unless exists $matches{$path_to_match} ;
 		
 		$matches{$path_to_match}++ ;
@@ -401,7 +401,7 @@ if(1 == @paths && !$config->{no_direct_path})
 my $ignore_case = $config->{ignore_case} ? '(?i)' : '' ;
 
 warn "matching directories in database\n" if $debug ;
-for my $db_entry (keys %{$db})
+for my $db_entry (sort keys %{$db})
 	{
 	my @directories = File::Spec->splitdir($db_entry) ;
 	my $db_entry_end_directory = $directories[-1] ;
@@ -417,7 +417,7 @@ for my $db_entry (keys %{$db})
 			warn "matches end directory in db entry\n" if $debug ;
 
 			push @directory_full_matches, 
-				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'end directory' } 
+				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'end directory in db entry' } 
 					unless exists $matches{$db_entry} ;
 			
 			$matches{$db_entry}++ ;
@@ -430,21 +430,21 @@ for my $db_entry (keys %{$db})
 			warn "matches part of end directory in db entry\n" if $debug ;
 
 			push @directory_partial_matches,
-				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of end directory'} 
+				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of end directory in db entry'} 
 					unless exists $matches{$db_entry} ;
 
 			$matches{$db_entry}++ ;
 			}
 		}
-	elsif($db_entry =~ /$ignore_case$path_to_match/)
+	elsif(my ($part_of_path_matched) = $db_entry =~  m[$ignore_case(.*$path_to_match.*?)/])
 		{
 		warn "matches part of path in db entry\n" if $debug ;
 		
 		push @path_partial_matches, 
-			{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of path'} 
-					unless exists $matches{$db_entry} ;
+			{ path => $part_of_path_matched, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of path in db entry'} 
+					unless exists $matches{$part_of_path_matched} ;
 			
-		$matches{$db_entry}++ ;
+		$matches{$part_of_path_matched}++ ;
 		}
 
 # sort by path, path weight, alphabetically
@@ -461,51 +461,50 @@ for my $db_entry (keys %{$db})
 		@path_partial_matches ;
 	}
 	
-if(! $config->{no_cwd} && $find_all)
+if(! $config->{no_cwd} && ($find_all || 0 == keys %matches))
 	{
-	warn "matching directories under currend working directory\n" if $debug ; 
+	warn "matching sub directories under cwd\n" if $debug ; 
 
-	for my $directory (File::Find::Rule->directory()->in($cwd))
+	for my $directory (sort File::Find::Rule->directory()->in($cwd))
 		{
 		my $sub_directory = $directory =~ s[^$cwd][]r ;
 		my $cwd_path_to_match = $path_to_match =~ s[^\./][/]r ;
 
-		if($sub_directory =~ $cwd_path_to_match)
+		if(my ($part_of_path_matched) = $sub_directory =~  m[$ignore_case(.*$cwd_path_to_match.*?)(/|$)])
 			{
 			warn "matches sub directory under cwd\n" if $debug ;
 
-			my @directories = File::Spec->splitdir($directory) ;
+			my @directories = File::Spec->splitdir($part_of_path_matched) ;
 			my $cumulated_path_weight = get_paths_weight($db, @directories) ;
 
-			push @cwd_sub_directory_matches, {path => $directory, weight => 0, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under cwd'}
-				unless exists $matches{$directory} ;
+			push @cwd_sub_directory_matches, {path => "$cwd$part_of_path_matched", weight => 0, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under cwd'}
+				unless exists $matches{"$cwd$part_of_path_matched"} ;
 
-			$matches{$directory}++ ;
+			$matches{"$cwd$part_of_path_matched"}++ ;
 			} 
 		}
 	
 	@cwd_sub_directory_matches = sort {$b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} @cwd_sub_directory_matches ;
 	}
 
-if(! $config->{no_sub_db} && $find_all)
+if(! $config->{no_sub_db} && ($find_all || 0 == keys %matches))
 	{
 	warn "matching directories under database entries\n" if $debug ; 
  
-	for my $db_entry (sort {length($b) <=> length($a) } keys %{$db})
+	for my $db_entry (sort {length($b) <=> length($a) || $b cmp $a} keys %{$db})
 		{
-		my $weight = $db->{$db_entry} ;
 		my $cumulated_path_weight = get_paths_weight($db, File::Spec->splitdir($db_entry)) ;	
 
-		for my $directory (File::Find::Rule->directory()->in($db_entry))
+		for my $directory (sort File::Find::Rule->directory()->in($db_entry))
 			{
-			if($directory =~ $path_to_match)
+			if(my ($part_of_path_matched) = $directory =~  m[$ignore_case(.*$path_to_match.*?)(/|$)])
 				{
 				warn "matches sub directory under database entry\n" if $debug ;
 				push @sub_directory_matches, 
-					{path => $directory, weight => 1, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under a db entry'} 
-						unless exists $matches{$directory} ;
+					{path => $part_of_path_matched, weight => 1, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under a db entry'} 
+						unless exists $matches{$part_of_path_matched} ;
 
-				$matches{$directory}++ ;
+				$matches{$part_of_path_matched}++ ;
 				} 
 			}
 		}  
@@ -791,7 +790,14 @@ $weight = 1 unless defined $weight ;
 
 if(defined $path)
 	{
-	$path = cwd() . '/' . $path unless $path =~ m[^/] ;
+	if('.' eq $path)
+		{
+		$path = cwd() ;
+		}
+	else
+		{
+		$path = cwd() . '/' . $path unless $path =~ m[^/] ;
+		}
 	}
 else
 	{

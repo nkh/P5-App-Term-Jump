@@ -43,7 +43,7 @@ command line or integrated with Bash.
   -remove_all		remove all paths from database
 
   -s|show_database	show database entries
-  -show_setup_files	show database entries
+  -show_config_files	show configuration files
 
   --complete		return completion path, used by bash complete
 
@@ -123,7 +123,7 @@ The the pat is removed from the database
 
 =head2 Displa the database file name and the configuration file name
 
-  $> j --show_setup_files
+  $> j --show_configuration_files
 
 =head1 MATCHING
 
@@ -246,6 +246,9 @@ will return a list of matches that an be used to integrate with the I<cd> comman
 
 #------------------------------------------------------------------------------------------------------------------------
 
+my $FIND_ALL = 1 ;
+my $FIND_FIRST = 0 ;
+
 our $debug ;
 our ($no_direct_path, $no_cwd, $no_sub_db) ;
 
@@ -253,7 +256,7 @@ sub run
 {
 my (@command_line_arguments) = @_ ;
 
-my ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete) ;
+my ($search, $add, $remove, $remove_all, $show_database, $show_configuration_files, $version, $complete) ;
 
 {
 local @ARGV = @command_line_arguments ;
@@ -270,7 +273,7 @@ die 'Error parsing options!'unless
 
 		's|show_database' => \$show_database,
 
-		'show_setup_files' => \$show_setup_files,
+		'show_configuration_files' => \$show_configuration_files,
 		'v|V|version' => \$version,
                 'h|help' => \&show_help, 
 
@@ -287,7 +290,7 @@ die 'Error parsing options!'unless
 # warning, if multipe commands are given on the command line, jump will run them at the same time
 	
 warn "\nJump: Error: no command given" unless 
-	grep {defined $_} ($search, $add, $remove, $remove_all, $show_database, $show_setup_files, $version, $complete) ;
+	grep {defined $_} ($search, $add, $remove, $remove_all, $show_database, $show_configuration_files, $version, $complete) ;
 
 my @results;
 
@@ -300,7 +303,7 @@ add(@command_line_arguments) if($add) ;
 @results = search(@command_line_arguments) if($search) ;
 
 show_database() if($show_database) ;
-show_setup_files() if($show_setup_files) ;
+show_configuration_files() if($show_configuration_files) ;
 show_version() if($version) ;
 
 return @results ;
@@ -310,10 +313,9 @@ return @results ;
 
 sub complete
 {
-my ($index, $command, @arguments) = @_ ;
-$index-- ;
+my (@arguments) = @_ ;
 
-my (@matches) = find_closest_match($index, @_) ;
+my (@matches) = find_closest_match($FIND_ALL, @_) ;
 
 print $_->{path} . "\n" for @matches ;
 
@@ -324,13 +326,11 @@ return (@matches) ;
 
 sub search
 {
-my (@matches) = find_closest_match(undef, @_) ;
+my (@matches) = find_closest_match($FIND_FIRST, @_) ;
 
 if(@matches) 
 	{
 	print $matches[0]{path} . "\n" ;
-	
-	#TODO: increment weight in database and add if direct directory
 	}
 
 return (@matches) ;
@@ -340,7 +340,7 @@ return (@matches) ;
 
 sub find_closest_match
 {
-my ($index, @paths) = @_ ;
+my ($find_all, @paths) = @_ ;
 
 return unless @paths ;
 	
@@ -461,7 +461,7 @@ for my $db_entry (keys %{$db})
 		@path_partial_matches ;
 	}
 	
-if(! $config->{no_cwd})
+if(! $config->{no_cwd} && $find_all)
 	{
 	warn "matching directories under currend working directory\n" if $debug ; 
 
@@ -487,7 +487,7 @@ if(! $config->{no_cwd})
 	@cwd_sub_directory_matches = sort {$b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} @cwd_sub_directory_matches ;
 	}
 
-if(! $config->{no_sub_db})
+if(! $config->{no_sub_db} && $find_all)
 	{
 	warn "matching directories under database entries\n" if $debug ; 
  
@@ -630,7 +630,7 @@ return ;
 
 #------------------------------------------------------------------------------------------------------------------------
 
-sub show_setup_files
+sub show_configuration_files
 {
 
 print get_db_location() . "\n" ;
@@ -754,10 +754,9 @@ while(my ($p, $w) = each %{$db})
 		}	
 	else
 		{
-		warn "Jump: Error '$p' is not a directory.\n" ;
+		warn "Jump: Warning, directory '$p' doesn not exist, ignoring it.\n" ;
 		}
 	}
-
 
 return ;
 }

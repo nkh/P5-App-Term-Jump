@@ -2,6 +2,11 @@
 # This is Todo.txt #
 #------------------#
 
+
+replace . by cwd
+
+--history
+
 add search options on the command line and a config when using the library
  
 --show_database regex

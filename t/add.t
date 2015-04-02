@@ -69,12 +69,12 @@ jump_test
 		[
 		{
 		command => q{ run('--add', 'TD/non_existing_test_directory') },
-		warnings_expected => [qr{Jump: Error '.+/non_existing_test_directory' is not a directory}],
+		warnings_expected => [qr{Jump: Warning, directory '.+/non_existing_test_directory' doesn not exist, ignoring it}],
 		db_expected => {},
 		} ,
 		{
 		command => q{ run('--add', 'TD/non_existing_sub_directory/non_existing_test_directory') },
-		warnings_expected => [qr{Jump: Error '.+/non_existing_sub_directory/non_existing_test_directory' is not a directory}],
+		warnings_expected => [qr{Jump: Warning, directory '.+/non_existing_sub_directory/non_existing_test_directory' doesn not exist, ignoring it}],
 		db_expected => {}, 
 		} ,
 		]

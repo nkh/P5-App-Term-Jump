@@ -16,7 +16,7 @@ jump_test
  	tests =>
 		[
 		{
-		command => q{ run('--show_setup_files') },
+		command => q{ run('--show_configuration_files') },
 		captured_output_expected => 
 			[
 			$default_database_file,
@@ -35,7 +35,7 @@ jump_test
  	tests =>
 		[
 		{
-		command => q{ run('--show_setup_files') },
+		command => q{ run('--show_configuration_files') },
 		captured_output_expected => 
 			[
 			'TD/temporary_jump_database',
@@ -55,7 +55,7 @@ jump_test
  	tests =>
 		[
 		{
-		command => q{ run('--show_setup_files') },
+		command => q{ run('--show_configuration_files') },
 		captured_output_expected => 
 			[
 			'TD/temporary_jump_database',

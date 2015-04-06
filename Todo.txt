@@ -3,13 +3,8 @@
 #------------------#
 
 
-replace . by cwd
-
---history
-
-add search options on the command line and a config when using the library
- 
---show_database regex
+! --interactive
+	can be done with external program and --complete
 
 --alias the_alias directory|cwd
 
@@ -21,7 +16,7 @@ add search options on the command line and a config when using the library
 		this is an error!
 			--find should handle that
 
---file regex	search for the first directory in the DB that containsthe file
+--file regex search for the first directory in the DB that containsthe file
 		also works with complete
 			display tree like like ra find
 	

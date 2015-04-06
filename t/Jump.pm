@@ -260,6 +260,13 @@ while( my ($entry_name, $contents) = each %{$directory_structure})
                         last ;
                         } ;
                          
+                'ARRAY' eq ref $_ and do
+                        {
+			open my $file, '>', "$start_directory/$entry_name" or die "Could not open file '$start_directory/$entry_name': $!" ;
+			print $file join("\n", @{ $contents }) ;
+                        last ;
+                        } ;
+                         
                 die "invalid element '$start_directory/$entry_name' in tree structure\n" ;
                 }
         }

@@ -6,14 +6,22 @@ META.yml
 README
 Todo.txt
 
+Version.pm
+
 lib/App/Term/Jump.pm
 
 scripts/jump
+scripts/cdd.sh
+scripts/jump_perl_completion.pl
+scripts/jump_perl_completion.sh
 
 t/match_many.t
 t/match.t
 t/Jump.pm
 t/divers.t
+t/add.t
+t/completion.t
+t/remove.t
 
 xt/author/000_distribution.t
 xt/author/000_strict.t
@@ -24,4 +32,5 @@ xt/author/000_pod.t
 xt/author/000_pod_coverage.t
 xt/author/000_perl_critic.t
 xt/author/perlcriticrc
+
 META.json

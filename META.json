@@ -32,7 +32,6 @@
          "requires" : {
             "Cwd" : "0",
             "Data::TreeDumper" : "0",
-            "Data::TreeDumper::Renderer::DHTML" : "0",
             "Data::TreeDumper::Utils" : "0",
             "File::Basename" : "0",
             "File::HomeDir" : "0.86",
@@ -40,7 +39,8 @@
             "File::Spec" : "0",
             "Readonly" : "0",
             "Sub::Exporter" : "0",
-            "Text::Pluralize" : "0"
+            "Text::Pluralize" : "0",
+            "Tree::Trie" : "0"
          }
       }
    },
@@ -56,5 +56,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.03"
+   "version" : "v0.03.10"
 }

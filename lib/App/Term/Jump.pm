@@ -35,6 +35,7 @@ command line or integrated with Bash.
 =head1 OPTIONS
 
   --search		search for the best match in the database
+  --file=regexp		match only directories that contain a file matching the sheel regexp
 
   -a|add		add path to database, weight is adjusted if the path exists
 			curent path if none is given
@@ -165,7 +166,7 @@ Setting configuration I<no_direct_path> disables this matching
 
 =item * match directory under the current working directory
 
-this allow Jump to mimic I<cd>'s behavior. 
+this allow Jump to mimic I<cd>'s behavior and jump to directories within the current "project". 
 
   $> jump --search A
 
@@ -252,11 +253,13 @@ my $FIND_FIRST = 0 ;
 our $debug ;
 our ($no_direct_path, $no_cwd, $no_sub_db) ;
 
+#------------------------------------------------------------------------------------------------------------------------
+
 sub run
 {
 my (@command_line_arguments) = @_ ;
 
-my ($search, $add, $remove, $remove_all, $show_database, $show_configuration_files, $version, $complete) ;
+my ($search, $file, $add, $remove, $remove_all, $show_database, $show_configuration_files, $version, $complete) ;
 
 {
 local @ARGV = @command_line_arguments ;
@@ -265,6 +268,8 @@ die 'Error parsing options!'unless
         GetOptions
                 (
 		'search' => \$search,
+		'file=s' => \$file,
+
 		'complete' => \$complete,
 
 		'a|add' => \$add,
@@ -299,8 +304,8 @@ remove(@command_line_arguments) if($remove) ;
 
 add(@command_line_arguments) if($add) ;
 
-@results = complete(@command_line_arguments) if($complete) ;
-@results = search(@command_line_arguments) if($search) ;
+@results = complete(\@command_line_arguments, $file) if($complete) ;
+@results = search(\@command_line_arguments, $file) if($search) ;
 
 show_database() if($show_database) ;
 show_configuration_files() if($show_configuration_files) ;
@@ -313,11 +318,13 @@ return @results ;
 
 sub complete
 {
-my (@arguments) = @_ ;
+my ($search_arguments, $file) = @_ ;
 
-my (@matches) = find_closest_match($FIND_ALL, @_) ;
+my (@matches) = find_closest_match($FIND_ALL, $search_arguments) ;
 
-print $_->{path} . "\n" for @matches ;
+@matches = directory_contains_file($file, \@matches) if defined $file ;
+
+print "$_->{path}\n" for @matches ;
 
 return (@matches) ;
 }
@@ -326,12 +333,13 @@ return (@matches) ;
 
 sub search
 {
-my (@matches) = find_closest_match($FIND_FIRST, @_) ;
+my ($search_arguments, $file) = @_ ;
 
-if(@matches) 
-	{
-	print $matches[0]{path} . "\n" ;
-	}
+my (@matches) = find_closest_match($FIND_FIRST, $search_arguments) ;
+
+@matches = directory_contains_file($file, \@matches) if defined $file ;
+
+print "$matches[0]{path}\n" if @matches ;
 
 return (@matches) ;
 }
@@ -340,7 +348,9 @@ return (@matches) ;
 
 sub find_closest_match
 {
-my ($find_all, @paths) = @_ ;
+my ($find_all, $paths) = @_ ;
+
+my @paths = @{ $paths } ;
 
 return unless @paths ;
 	
@@ -517,11 +527,24 @@ if(! $config->{no_sub_db} && ($find_all || 0 == keys %matches))
 return (@direct_matches, @directory_full_matches, @directory_partial_matches, @cwd_sub_directory_matches, @sub_directory_matches, @path_partial_matches) ;
 }
 				
+#------------------------------------------------------------------------------------------------------------------------
+
+sub directory_contains_file
+{
+my ($file, $matches) = @_ ;
+
+grep
+	{
+	File::Find::Rule->maxdepth(1)->file()->name($file)->in($_->{path}) ;
+	}
+	@{ $matches } ;
+}
+ 
+#------------------------------------------------------------------------------------------------------------------------
+
 sub get_paths_weight
 {
 my ($db, @directories) = @_ ;
-
-# TODO: handle CWD
 
 my $cumulated_path_weight = 0 ;
 
@@ -793,6 +816,10 @@ if(defined $path)
 	if('.' eq $path)
 		{
 		$path = cwd() ;
+		}
+	elsif('..' eq $path)
+		{
+		$path = Cwd::realpath(File::Spec->updir);
 		}
 	else
 		{

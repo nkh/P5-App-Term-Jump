@@ -79,7 +79,7 @@ black_listed_directories =>
 ignore_case => 1, #case insensitive search and completion
 
 no_direct_path => 1, # ignore directories directly under cwd
-no_cwd => 1, # ignore directories and sub directories under cwd
+no_sub_cwd => 1, # ignore directories and sub directories under cwd
 no_sub_db => 1, # ignore directories under the database entries
 
 }

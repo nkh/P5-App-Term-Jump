@@ -43,12 +43,17 @@ if(defined $word_to_complete && $word_to_complete =~ /^-/)
 	$trie->add( 
 		qw(
 		search
+		file
 		complete
 		a add
 		r remove
 		remove_all
 		s show_database
 		show_setup_files
+		no_direct_path
+		no_sub_cwd
+		no_sub_db
+
 		v version
 		h help
 		generate_bash_completion
@@ -68,6 +73,7 @@ else
 	
 	my @without_completion =
 		qw(
+		file
 		add
 		show_database
 		show_setup_files

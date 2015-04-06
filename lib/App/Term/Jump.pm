@@ -52,7 +52,7 @@ command line or integrated with Bash.
   -h|help		show this help
 
   -no_direct_path	ignore directories directly under cwd
-  -no_cwd		ignore directories and sub directories under cwd
+  -no_sub_cwd		ignore directories and sub directories under cwd
   -no_sub_db		ignore directories under the database entries
 
 =head1 FILES
@@ -68,7 +68,7 @@ command line or integrated with Bash.
 	ignore_case => 0, 	# case insensitive search and completion
 
 	no_direct_path => 0, 	# ignore directories directly under cwd
-	no_cwd => 0, 		# ignore directories and sub directories under cwd
+	no_sub_cwd => 0, 	# ignore directories and sub directories under cwd
 	no_sub_db => 0, 	# ignore directories under the database entries
 	} ;
 
@@ -204,7 +204,7 @@ will return  /path_part/path_part3/C which is the entry containing I<path> and h
 
 will return /subdir/E  
 
-Seting configuration I<no_cwd> disables this matching
+Seting configuration I<no_sub_cwd> disables this matching
  
 =item * match sub directory of a db entry
 
@@ -233,6 +233,11 @@ will return /path_part/path_part3/C
 
 will return a list of matches that an be used to integrate with the I<cd> command. Read add_jump.sh in the distribution
 
+=head2 Matching files
+
+the I<--file> option let you specify a file regex which will be use by I<Jump> to further refine your search. Once all
+the matching possible matching directories are found, each directory is checked for files matching the regexp.
+
 =head1 SEE ALSO
 
   autojump
@@ -247,11 +252,13 @@ will return a list of matches that an be used to integrate with the I<cd> comman
 
 #------------------------------------------------------------------------------------------------------------------------
 
+$|++ ;
+
 my $FIND_ALL = 1 ;
 my $FIND_FIRST = 0 ;
 
 our $debug ;
-our ($no_direct_path, $no_cwd, $no_sub_db) ;
+our ($no_direct_path, $no_sub_cwd, $no_sub_db) ;
 
 #------------------------------------------------------------------------------------------------------------------------
 
@@ -283,8 +290,8 @@ die 'Error parsing options!'unless
                 'h|help' => \&show_help, 
 
 		'no_direct_path' => \$no_direct_path,
-		'no_cwd' => \$no_cwd,
-		'no_dub_db' => \$no_sub_db,
+		'no_sub_cwd' => \$no_sub_cwd,
+		'no_sub_db' => \$no_sub_db,
 
 		'd|debug' => \$debug,
                 ) ;
@@ -322,7 +329,7 @@ my ($search_arguments, $file) = @_ ;
 
 my (@matches) = find_closest_match($FIND_ALL, $search_arguments) ;
 
-@matches = directory_contains_file($file, \@matches) if defined $file ;
+@matches = directory_contains_file(\@matches, $file) if defined $file ;
 
 print "$_->{path}\n" for @matches ;
 
@@ -337,7 +344,7 @@ my ($search_arguments, $file) = @_ ;
 
 my (@matches) = find_closest_match($FIND_FIRST, $search_arguments) ;
 
-@matches = directory_contains_file($file, \@matches) if defined $file ;
+@matches = directory_contains_file(\@matches, $file) if defined $file ;
 
 print "$matches[0]{path}\n" if @matches ;
 
@@ -355,8 +362,6 @@ my @paths = @{ $paths } ;
 return unless @paths ;
 	
 my $cwd = cwd() ;
-
-warn "\nApp::Term::Jump::find_closest_match:\n" if $debug ;
 
 my $path_to_match = join('.*', @paths) ;
 my $end_directory_to_match = $paths[-1] ;
@@ -380,14 +385,14 @@ my (@direct_matches, @directory_full_matches, @directory_partial_matches, @path_
 my ($config) = get_config() ;
 my $db = read_db() ;
 	
-warn "matching direct path\n" if $debug ;
+# matching direct paths
 if(1 == @paths && !$config->{no_direct_path})
 	{
 	my $path_to_match = $paths[0] ;
 
 	if($path_to_match =~ m[^/] && -d $path_to_match)
 		{
-		warn "matches full path in file system\n" if $debug ;
+		warn "matches full path in file system: $path_to_match\n" if $debug ;
 
 		push @direct_matches, {path => $path_to_match, weight => 0,cumulated_path_weight => 0,  matches => 'full path in file system'} 
 			unless exists $matches{$path_to_match} ;
@@ -396,7 +401,7 @@ if(1 == @paths && !$config->{no_direct_path})
 		}
 	elsif(-d $cwd . '/' . $path_to_match)
 		{
-		warn "matches directory under cwd\n" if $debug ;
+		warn "matches directory under cwd: $path_to_match\n" if $debug ;
 
 		$path_to_match =~ s[^\./+][] ;
 		$path_to_match =~ s[^/+][] ;
@@ -410,7 +415,7 @@ if(1 == @paths && !$config->{no_direct_path})
 
 my $ignore_case = $config->{ignore_case} ? '(?i)' : '' ;
 
-warn "matching directories in database\n" if $debug ;
+#matching directories in database
 for my $db_entry (sort keys %{$db})
 	{
 	my @directories = File::Spec->splitdir($db_entry) ;
@@ -424,7 +429,7 @@ for my $db_entry (sort keys %{$db})
 		{
 		if($db_entry =~  /$ignore_case$path_to_match/)
 			{
-			warn "matches end directory in db entry\n" if $debug ;
+			warn "matches end directory in db entry: $db_entry\n" if $debug ;
 
 			push @directory_full_matches, 
 				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'end directory in db entry' } 
@@ -437,7 +442,7 @@ for my $db_entry (sort keys %{$db})
 		{
 		if($db_entry =~  /$ignore_case$path_to_match/)
 			{
-			warn "matches part of end directory in db entry\n" if $debug ;
+			warn "matches part of end directory in db entry: $db_entry\n" if $debug ;
 
 			push @directory_partial_matches,
 				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of end directory in db entry'} 
@@ -448,7 +453,7 @@ for my $db_entry (sort keys %{$db})
 		}
 	elsif(my ($part_of_path_matched) = $db_entry =~  m[$ignore_case(.*$path_to_match.*?)/])
 		{
-		warn "matches part of path in db entry\n" if $debug ;
+		warn "matches part of path in db entry: $db_entry\n" if $debug ;
 		
 		push @path_partial_matches, 
 			{ path => $part_of_path_matched, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of path in db entry'} 
@@ -471,9 +476,9 @@ for my $db_entry (sort keys %{$db})
 		@path_partial_matches ;
 	}
 	
-if(! $config->{no_cwd} && ($find_all || 0 == keys %matches))
+if(! $config->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 	{
-	warn "matching sub directories under cwd\n" if $debug ; 
+	# matching sub directories under cwd 
 
 	for my $directory (sort File::Find::Rule->directory()->in($cwd))
 		{
@@ -482,7 +487,7 @@ if(! $config->{no_cwd} && ($find_all || 0 == keys %matches))
 
 		if(my ($part_of_path_matched) = $sub_directory =~  m[$ignore_case(.*$cwd_path_to_match.*?)(/|$)])
 			{
-			warn "matches sub directory under cwd\n" if $debug ;
+			warn "matches sub directory under cwd: $directory\n" if $debug ;
 
 			my @directories = File::Spec->splitdir($part_of_path_matched) ;
 			my $cumulated_path_weight = get_paths_weight($db, @directories) ;
@@ -499,7 +504,7 @@ if(! $config->{no_cwd} && ($find_all || 0 == keys %matches))
 
 if(! $config->{no_sub_db} && ($find_all || 0 == keys %matches))
 	{
-	warn "matching directories under database entries\n" if $debug ; 
+	# matching directories under database entries
  
 	for my $db_entry (sort {length($b) <=> length($a) || $b cmp $a} keys %{$db})
 		{
@@ -509,7 +514,7 @@ if(! $config->{no_sub_db} && ($find_all || 0 == keys %matches))
 			{
 			if(my ($part_of_path_matched) = $directory =~  m[$ignore_case(.*$path_to_match.*?)(/|$)])
 				{
-				warn "matches sub directory under database entry\n" if $debug ;
+				warn "matches sub directory under database entry: $directory\n" if $debug ;
 				push @sub_directory_matches, 
 					{path => $part_of_path_matched, weight => 1, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under a db entry'} 
 						unless exists $matches{$part_of_path_matched} ;
@@ -531,13 +536,21 @@ return (@direct_matches, @directory_full_matches, @directory_partial_matches, @c
 
 sub directory_contains_file
 {
-my ($file, $matches) = @_ ;
+my ($directories, $file_regexp) = @_ ;
 
 grep
 	{
-	File::Find::Rule->maxdepth(1)->file()->name($file)->in($_->{path}) ;
+	my @files = File::Find::Rule->maxdepth(1)->file()->name($file_regexp)->in($_->{path}) ;
+
+	if($debug)
+		{
+		warn "Checking option --file '$file_regexp' for directory '$_->{path}'\n" ;
+		warn "\t$_\n" for @files ;
+		}
+
+	@files ;
 	}
-	@{ $matches } ;
+	@{ $directories } ;
 }
  
 #------------------------------------------------------------------------------------------------------------------------
@@ -704,14 +717,14 @@ if(-f $config_location)
 	}
 
 $config->{no_direct_path} = $no_direct_path if defined $no_direct_path ;
-$config->{no_cwd} = $no_cwd if defined $no_cwd ;
+$config->{no_sub_cwd} = $no_sub_cwd if defined $no_sub_cwd ;
 $config->{no_sub_db} = $no_sub_db if defined $no_sub_db ;
 
 return
 	{
 	ignore_case => 0, 	#case insensitive search and completion
 	no_direct_path => 0, 	#ignore directories directly under cwd
-	no_cwd => 0, 		#ignore directories and sub directories under cwd
+	no_sub_cwd => 0, 		#ignore directories and sub directories under cwd
 	no_sub_db => 0, 	#ignore directories under the database entries
 
 	black_listed_directories => [] ,

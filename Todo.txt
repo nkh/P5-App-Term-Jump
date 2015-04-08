@@ -8,9 +8,6 @@
 
 --alias the_alias directory|cwd
 
---debug/seach info
-	show what category matches are in
-
 --source option to define what cwd is 
 	as jump --complete start from current directory and find all matches below it
 		this is an error!

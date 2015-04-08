@@ -257,8 +257,7 @@ $|++ ;
 my $FIND_ALL = 1 ;
 my $FIND_FIRST = 0 ;
 
-our $debug ;
-our ($no_direct_path, $no_sub_cwd, $no_sub_db) ;
+our ($no_direct_path, $no_sub_cwd, $no_sub_db, $debug) ;
 
 #------------------------------------------------------------------------------------------------------------------------
 
@@ -266,59 +265,77 @@ sub run
 {
 my (@command_line_arguments) = @_ ;
 
-my ($search, $file, $add, $remove, $remove_all, $show_database, $show_configuration_files, $version, $complete) ;
+my ($options, $command_line_arguments) = parse_command_line(@command_line_arguments) ;
 
-{
-local @ARGV = @command_line_arguments ;
+($no_direct_path, $no_sub_cwd, $no_sub_db, $debug) = @{$options}{qw( no_direct_path no_sub_cwd no_sub_db debug)} ;
 
-die 'Error parsing options!'unless 
-        GetOptions
-                (
-		'search' => \$search,
-		'file=s' => \$file,
+show_help() if($options->{help}) ;
 
-		'complete' => \$complete,
+warn "\nJump: Error: no command given" unless 
+	grep {defined $options->{$_}} qw(search add remove remove_all show_database show_configuration_files version complete) ;
 
-		'a|add' => \$add,
-		'r|remove' => \$remove,
-		'remove_all' => \$remove_all,
-
-		's|show_database' => \$show_database,
-
-		'show_configuration_files' => \$show_configuration_files,
-		'v|V|version' => \$version,
-                'h|help' => \&show_help, 
-
-		'no_direct_path' => \$no_direct_path,
-		'no_sub_cwd' => \$no_sub_cwd,
-		'no_sub_db' => \$no_sub_db,
-
-		'd|debug' => \$debug,
-                ) ;
-
-@command_line_arguments = @ARGV ;
+execute_commands($options, $command_line_arguments) ;
 }
 
+sub execute_commands
+{
 # warning, if multipe commands are given on the command line, jump will run them at the same time
-	
-warn "\nJump: Error: no command given" unless 
-	grep {defined $_} ($search, $add, $remove, $remove_all, $show_database, $show_configuration_files, $version, $complete) ;
+
+my ($options, $command_line_arguments) = @_ ;
 
 my @results;
 
-remove_all(@command_line_arguments) if($remove_all) ;
-remove(@command_line_arguments) if($remove) ;
+remove_all($command_line_arguments) if($options->{remove_all}) ;
+remove($command_line_arguments) if($options->{remove}) ;
 
-add(@command_line_arguments) if($add) ;
+add($command_line_arguments) if($options->{add}) ;
 
-@results = complete(\@command_line_arguments, $file) if($complete) ;
-@results = search(\@command_line_arguments, $file) if($search) ;
+@results = complete($command_line_arguments, $options->{file}) if($options->{complete}) ;
+@results = search($command_line_arguments, $options->{file}) if($options->{search}) ;
 
-show_database() if($show_database) ;
-show_configuration_files() if($show_configuration_files) ;
-show_version() if($version) ;
+show_database() if($options->{show_database}) ;
+show_configuration_files() if($options->{show_configuration_files}) ;
+show_version() if($options->{version}) ;
 
 return @results ;
+}
+
+#------------------------------------------------------------------------------------------------------------------------
+
+sub parse_command_line
+{
+local @ARGV = @_ ;
+
+my ($search, $file, $add, $remove, $remove_all, $show_database, $show_configuration_files, $version, $complete) ;
+
+my %options ;
+
+die 'Error parsing options!' unless 
+	GetOptions
+                (
+		'search' => \$options{search},
+		'file=s' => \$options{file},
+
+		'complete' => \$options{complete},
+
+		'a|add' => \$options{add},
+		'r|remove' => \$options{remove},
+		'remove_all' => \$options{remove_all},
+
+		's|show_database' => \$options{show_database},
+
+		'show_configuration_files' => \$options{show_configuration_files},
+		'v|V|version' => \$options{version},
+                'h|help' => \$options{show_help}, 
+
+		'no_direct_path' => \$options{no_direct_path},
+		'no_sub_cwd' => \$options{no_sub_cwd},
+		'no_sub_db' => \$options{no_sub_db},
+
+		'd|debug' => \$options{debug},
+                ) ;
+	
+return (\%options, \@ARGV) ;
 }
 
 #------------------------------------------------------------------------------------------------------------------------
@@ -578,7 +595,7 @@ return $cumulated_path_weight ;
 
 sub remove
 {
-my ($weight, $path) = check_weight_and_path(@_) ;
+my ($weight, $path) = check_weight_and_path(@{$_[0]}) ;
 
 my $db = read_db() ;
 
@@ -591,7 +608,7 @@ write_db($db) ;
 
 sub add
 {
-my ($weight, $path) = check_weight_and_path(@_) ;
+my ($weight, $path) = check_weight_and_path(@{$_[0]}) ;
 
 if(! is_blacklisted($path))
 	{
@@ -618,7 +635,9 @@ sub remove_all
 {
 my %new_db ;
 
-if(0 == @_)
+my @remove_arguments = @{ $_[0] } ;
+
+if(0 == @remove_arguments)
 	{
 	# no argument, remove all entries
 	}
@@ -630,7 +649,7 @@ else
 		{
 		my $delete_key = 0 ;
 
-		for my $delete_regex (@_)
+		for my $delete_regex (@remove_arguments)
 			{
 			if($key =~ $delete_regex)
 				{

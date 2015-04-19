@@ -39,7 +39,12 @@ END_OF_YAML
 			[
 			'TD/A/B',
 			'TD/BETA/B',
+			'TD/A/B/C',
 			'TD/BETA',
+			'TD/BETA/B/C',
+			'TD/BETA/B/C/D/ECHO',
+			'TD/A/B/C/D',
+			'TD/BETA/B/C/D',
 			],
 		},
 #---------------

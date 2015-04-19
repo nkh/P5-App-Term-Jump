@@ -349,7 +349,7 @@ my (@matches) = find_closest_match($FIND_ALL, $search_arguments) ;
 
 @matches = directory_contains_file(\@matches, $file) if defined $file ;
 
-print "$_->{path}\n" for @matches ;
+print (($_->{source} || $_->{path}) . "\n") for @matches ;
 
 return (@matches) ;
 }
@@ -424,9 +424,9 @@ if(1 == @paths && !$config->{no_direct_path})
 		$path_to_match =~ s[^/+][] ;
 		
 		push @direct_matches, {path => $path_to_match, weight => 0, cumulated_path_weight => 0, matches => 'directory under cwd'} 
-			unless exists $matches{$path_to_match} ;
+			unless exists $matches{$cwd . '/' . $path_to_match} ;
 		
-		$matches{$path_to_match}++ ;
+		$matches{$cwd . '/' . $path_to_match}++ ;
 		}
 	}
 
@@ -441,7 +441,6 @@ for my $db_entry (sort keys %{$db})
 	my $weight = $db->{$db_entry} ;
 	my $cumulated_path_weight = get_paths_weight($db, @directories) ;	
 
-	# match end directory
 	if($db_entry_end_directory =~ /$ignore_case^$end_directory_to_match$/)
 		{
 		if($db_entry =~  /$ignore_case$path_to_match/)
@@ -473,24 +472,24 @@ for my $db_entry (sort keys %{$db})
 		warn "matches part of path in db entry: $db_entry\n" if $debug ;
 		
 		push @path_partial_matches, 
-			{ path => $part_of_path_matched, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of path in db entry'} 
-					unless exists $matches{$part_of_path_matched} ;
+			{ path => $part_of_path_matched, source => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of path in db entry'} 
+					unless exists $matches{$db_entry} ;
 			
-		$matches{$part_of_path_matched}++ ;
+		$matches{$db_entry}++ ;
 		}
 
-# sort by path, path weight, alphabetically
-@directory_full_matches = 
-	sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
-		@directory_full_matches ;
+	# sort by path, path weight, alphabetically
+	@directory_full_matches = 
+		sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
+			@directory_full_matches ;
 
-@directory_partial_matches = 
-	sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
-		@directory_partial_matches ;
+	@directory_partial_matches = 
+		sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
+			@directory_partial_matches ;
 
-@path_partial_matches = 
-	sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
-		@path_partial_matches ;
+	@path_partial_matches = 
+		sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
+			@path_partial_matches ;
 	}
 	
 if(! $config->{no_sub_cwd} && ($find_all || 0 == keys %matches))
@@ -509,10 +508,10 @@ if(! $config->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 			my @directories = File::Spec->splitdir($part_of_path_matched) ;
 			my $cumulated_path_weight = get_paths_weight($db, @directories) ;
 
-			push @cwd_sub_directory_matches, {path => "$cwd$part_of_path_matched", weight => 0, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under cwd'}
-				unless exists $matches{"$cwd$part_of_path_matched"} ;
+			push @cwd_sub_directory_matches, {path => "$cwd$part_of_path_matched", source => $directory, weight => 0, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under cwd'}
+				unless exists $matches{$directory} ;
 
-			$matches{"$cwd$part_of_path_matched"}++ ;
+			$matches{$directory}++ ;
 			} 
 		}
 	
@@ -533,10 +532,10 @@ if(! $config->{no_sub_db} && ($find_all || 0 == keys %matches))
 				{
 				warn "matches sub directory under database entry: $directory\n" if $debug ;
 				push @sub_directory_matches, 
-					{path => $part_of_path_matched, weight => 1, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under a db entry'} 
-						unless exists $matches{$part_of_path_matched} ;
+					{path => $part_of_path_matched, source => $directory, weight => 1, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under a db entry'} 
+						unless exists $matches{$directory} ;
 
-				$matches{$part_of_path_matched}++ ;
+				$matches{$directory}++ ;
 				} 
 			}
 		}  
@@ -557,7 +556,7 @@ my ($directories, $file_regexp) = @_ ;
 
 grep
 	{
-	my @files = File::Find::Rule->maxdepth(1)->file()->name($file_regexp)->in($_->{path}) ;
+	my @files = File::Find::Rule->maxdepth(1)->file()->name($file_regexp)->in($_->{source} || $_->{path}) ;
 
 	if($debug)
 		{

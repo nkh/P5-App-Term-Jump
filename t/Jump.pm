@@ -182,7 +182,7 @@ for my $test (@{$setup_arguments{tests}})
 		{
 		 cmp_deeply
 			(
-			[ map{$_->{path}} @matches],
+			[ map{$_->{source} || $_->{path}} @matches],
 			$test->{matches_expected},
 			"matches-$setup_arguments{name}-$test_name::$test_index"
 			) or $error++

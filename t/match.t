@@ -177,7 +177,7 @@ END_OF_YAML
 		matches_expected => 
 			[
 			'TD/C/CC_2/CHARLIE_CCC',
-			'TD/D/DD_1/CHARLIE_DDD',
+			'TD/D/DD_1/CHARLIE_DDD/DDDD',
 			],
 		} ,
 #---------------
@@ -190,7 +190,7 @@ END_OF_YAML
 			],
 		matches_expected => 
 			[
-			'TD/D/DD_1/ALPHA_DDD',
+			'TD/D/DD_1/ALPHA_DDD/DDDD',
 			],
 		} ,
 #---------------
@@ -200,8 +200,8 @@ END_OF_YAML
 		captured_output_expected => ['TD/D/BRAVO_DD'],
 		matches_expected => 
 			[
-			'TD/D/BRAVO_DD',
-			'TD/C/BRAVO',
+			'TD/D/BRAVO_DD/DDD',
+			'TD/C/BRAVO/CCC',
 			],
 		},
 		{
@@ -210,8 +210,8 @@ END_OF_YAML
 		captured_output_expected => ['TD/E/EE_2/DELTA_EEE_2'],
 		matches_expected => 
 			[
-			'TD/E/EE_2/DELTA_EEE_2',
-			'TD/E/EE_1/DELTA_EEE_1',
+			'TD/E/EE_2/DELTA_EEE_2/EEEE_2',
+			'TD/E/EE_1/DELTA_EEE_1/EEEE_1',
 			],
 		}, 
 		{
@@ -220,7 +220,8 @@ END_OF_YAML
 		captured_output_expected => ['TD/E/EE_3/ECHO'],
 		matches_expected => 
 			[
-			'TD/E/EE_3/ECHO',
+			'TD/E/EE_3/ECHO/ABC',
+			'TD/E/EE_3/ECHO/XYZ',
 			],
 		} ,
 #---------------

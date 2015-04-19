@@ -298,6 +298,26 @@ END_OF_YAML
 			] ,
 		} ,
 
+		{
+		name => 'ignore case, no match',
+		cd => 'TD/NOT_IN_DB',
+		command => q{ run('--search', 'HoTeL') },
+		captured_output_expected => [],
+		matches_expected => [], 
+		} ,
+
+		{
+		name => 'ignore case, no match',
+		cd => 'TD/NOT_IN_DB',
+		command => q{ run('--search', '--ignore_case', 'HoTeL') },
+		captured_output_expected => ['TD/A/B/C/D/E/HOTEL_B'],
+		matches_expected => 
+			[
+			'TD/A/B/C/D/E/HOTEL_B',
+			'TD/A/B_3/HOTEL_A',
+			] ,
+		} ,
+
 		]
 	) ;
 

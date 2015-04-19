@@ -967,6 +967,8 @@ if(defined $word_to_complete && $word_to_complete =~ /^-/)
 		remove_all
 		s show_database
 		show_setup_files
+
+		ignore_case
 		no_direct_path
 		no_sub_cwd
 		no_sub_db
@@ -987,16 +989,6 @@ else
 		remove_all 
 		) ;
 	
-	my @without_completion =
-		qw(
-		file
-		add
-		show_database
-		show_setup_files
-		version
-		help
-		) ;
-
 	my $do_completion = grep { exists $with_completion{$_} } @arguments ;
 	
 	if($do_completion)
@@ -1009,9 +1001,10 @@ else
 			{
 			#allow completion of db entries only
 
-			$App::Term::Jump::no_direct_path++;
-			$App::Term::Jump::no_sub_cwd++ ;
-			$App::Term::Jump::no_sub_db++ ;
+			$ignore_case = 0 ;
+			$no_direct_path++;
+			$no_sub_cwd++ ;
+			$no_sub_db++ ;
 
 			@arguments = ('.') if 1 == @arguments ; # force completion to whole db if no arguments are given
 			}

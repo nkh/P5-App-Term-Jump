@@ -183,9 +183,8 @@ my $build = $class->new
 	script_files => 
 		[
 		'scripts/jump',
-		'scripts/jump_perl_completion.pl',
-		'scripts/jump_perl_completion.sh',
-		'scripts/cdd.sh',
+		'scripts/jump_bash_completion.pl',
+		'scripts/bash_integration.sh',
 		],
 
 	dist_author  => 'Khemir Nadim ibn Hamouda. <nadim.khemir@gmail.com>',

@@ -10,6 +10,7 @@ use Getopt::Long;
 use File::Find::Rule ;
 use File::HomeDir ;
 use Cwd ;
+use Data::TreeDumper ;
 
 our $VERSION = '0.03' ;
 
@@ -267,8 +268,6 @@ my (@command_line_arguments) = @_ ;
 
 my ($options, $command_line_arguments) = parse_command_line(@command_line_arguments) ;
 
-($no_direct_path, $no_sub_cwd, $no_sub_db, $debug) = @{$options}{qw( no_direct_path no_sub_cwd no_sub_db debug)} ;
-
 show_help() if($options->{help}) ;
 
 warn "\nJump: Error: no command given" unless 
@@ -335,6 +334,8 @@ die 'Error parsing options!' unless
 		'd|debug' => \$options{debug},
                 ) ;
 	
+($no_direct_path, $no_sub_cwd, $no_sub_db, $debug) = @options{qw( no_direct_path no_sub_cwd no_sub_db debug)} ;
+
 return (\%options, \@ARGV) ;
 }
 
@@ -385,7 +386,6 @@ my $end_directory_to_match = $paths[-1] ;
 my $path_to_match_without_end_directory =  @paths > 1 ? join('.*', @paths[0 .. $#paths-1]) : qr// ;
 $path_to_match_without_end_directory =~ s[^\./][$cwd] ;
 
-use Data::TreeDumper ;
 warn DumpTree
 	{
 	paths => \@paths,

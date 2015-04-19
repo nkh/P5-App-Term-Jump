@@ -2,6 +2,19 @@
 # This is Todo.txt #
 #------------------#
 
+? when matching multiple directories with a single word, entries are cut at the natching directory, IE:
+
+search: perl
+db:
+	/perl
+	/perl/sub
+	/perl/sub/sub
+
+only /perl is returned because that's what we are looking for 
+
+=> works fine in search mode but not in completion mode
+=> when -F is given, the to potential directories with the file are not searched as they are not returned
+
 
 ! --interactive
 	can be done with external program and --complete

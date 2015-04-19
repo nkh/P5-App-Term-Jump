@@ -84,22 +84,22 @@ else
 
 	my $do_completion = grep { exists $with_completion{$_} } @arguments ;
 	
-	if(grep {/-remove/} @arguments)
-		{
-		#allow completion of db entries only
-
-		$App::Term::Jump::no_direct_path++;
-		$App::Term::Jump::no_sub_cwd++ ;
-		$App::Term::Jump::no_sub_db++ ;
-
-		@arguments = ('.') if 1 == @arguments ; # force completion to whole db if no arguments are given
-		}
-
 	if($do_completion)
 		{
 		#$App::Term::Jump::debug++ ;
 
 		my ($options, $search_arguments) = App::Term::Jump::parse_command_line(@arguments) ;
+
+		if($options->{remove})
+			{
+			#allow completion of db entries only
+
+			$App::Term::Jump::no_direct_path++;
+			$App::Term::Jump::no_sub_cwd++ ;
+			$App::Term::Jump::no_sub_db++ ;
+
+			@arguments = ('.') if 1 == @arguments ; # force completion to whole db if no arguments are given
+			}
 
 		my @completions = App::Term::Jump::complete($search_arguments, $options->{file}) ;
 

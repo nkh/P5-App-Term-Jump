@@ -11,6 +11,8 @@ use File::Find::Rule ;
 use File::HomeDir ;
 use Cwd ;
 use Data::TreeDumper ;
+use Tree::Trie;
+
 
 our $VERSION = '0.03' ;
 
@@ -36,7 +38,7 @@ command line or integrated with Bash.
 =head1 OPTIONS
 
   --search		search for the best match in the database
-  --file=regexp		match only directories that contain a file matching the sheel regexp
+  --file=glob		match only directories that contain a file matching the shell regexp
 
   -a|add		add path to database, weight is adjusted if the path exists
 			curent path if none is given
@@ -52,6 +54,7 @@ command line or integrated with Bash.
   -v|version		show version information and exit
   -h|help		show this help
 
+  -ignore_case		do a case insensitive search
   -no_direct_path	ignore directories directly under cwd
   -no_sub_cwd		ignore directories and sub directories under cwd
   -no_sub_db		ignore directories under the database entries
@@ -258,7 +261,7 @@ $|++ ;
 my $FIND_ALL = 1 ;
 my $FIND_FIRST = 0 ;
 
-our ($no_direct_path, $no_sub_cwd, $no_sub_db, $debug) ;
+our ($ignore_case, $no_direct_path, $no_sub_cwd, $no_sub_db, $debug) ;
 
 #------------------------------------------------------------------------------------------------------------------------
 
@@ -327,6 +330,7 @@ die 'Error parsing options!' unless
 		'v|V|version' => \$options{version},
                 'h|help' => \$options{show_help}, 
 
+		'ignore_case' => \$options{ignore_case},
 		'no_direct_path' => \$options{no_direct_path},
 		'no_sub_cwd' => \$options{no_sub_cwd},
 		'no_sub_db' => \$options{no_sub_db},
@@ -334,7 +338,10 @@ die 'Error parsing options!' unless
 		'd|debug' => \$options{debug},
                 ) ;
 	
-($no_direct_path, $no_sub_cwd, $no_sub_db, $debug) = @options{qw( no_direct_path no_sub_cwd no_sub_db debug)} ;
+($ignore_case, $no_direct_path, $no_sub_cwd, $no_sub_db, $debug) = @options{qw(ignore_case no_direct_path no_sub_cwd no_sub_db debug)} ;
+
+# broken bah completion gives use file regext with quotes from command line!
+$options{file} = $1 if(defined $options{file} && $options{file} =~ /^(?:'|")(.*)(?:'|")$/) ;
 
 return (\%options, \@ARGV) ;
 }
@@ -343,13 +350,20 @@ return (\%options, \@ARGV) ;
 
 sub complete
 {
+my (@matches) = _complete(@_) ;
+
+print (($_->{source} || $_->{path}) . "\n") for @matches ;
+
+return(@matches) ;
+}
+
+sub _complete
+{
 my ($search_arguments, $file) = @_ ;
 
 my (@matches) = find_closest_match($FIND_ALL, $search_arguments) ;
 
 @matches = directory_contains_file(\@matches, $file) if defined $file ;
-
-print (($_->{source} || $_->{path}) . "\n") for @matches ;
 
 return (@matches) ;
 }
@@ -556,11 +570,13 @@ my ($directories, $file_regexp) = @_ ;
 
 grep
 	{
-	my @files = File::Find::Rule->maxdepth(1)->file()->name($file_regexp)->in($_->{source} || $_->{path}) ;
+	my $source = $_->{source} || $_->{path} ; 
+
+	my @files = File::Find::Rule->maxdepth(1)->file()->name($file_regexp)->in($source) ;
 
 	if($debug)
 		{
-		warn "Checking option --file '$file_regexp' for directory '$_->{path}'\n" ;
+		warn "Checking option --file '$file_regexp' for directory '$source' found: " . scalar(@files) . " \n" ;
 		warn "\t$_\n" for @files ;
 		}
 
@@ -733,7 +749,27 @@ if(-f $config_location)
 		warn "couldn't run $config_location"       unless $config;
 		}
 	}
+else
+	{
+	# write a default configuration file
+	open my $new_config_fh, '>', $config_location or die "Jump: Can't create default config in '$config_location': $!" ;
+	
+	print $new_config_fh <<EOC ;
 
+{
+black_listed_directories => [] , # sring or qr
+
+ignore_case => 0, 	#case insensitive search and completion
+
+no_direct_path => 0, 	#ignore directories directly under cwd
+no_sub_cwd => 0, 	#ignore directories and sub directories under cwd
+no_sub_db => 0, 	#ignore directories under the database entries
+} ;
+
+EOC
+	}
+		
+$config->{ignore_case} = $ignore_case if defined $ignore_case ;
 $config->{no_direct_path} = $no_direct_path if defined $no_direct_path ;
 $config->{no_sub_cwd} = $no_sub_cwd if defined $no_sub_cwd ;
 $config->{no_sub_db} = $no_sub_db if defined $no_sub_db ;
@@ -742,7 +778,7 @@ return
 	{
 	ignore_case => 0, 	#case insensitive search and completion
 	no_direct_path => 0, 	#ignore directories directly under cwd
-	no_sub_cwd => 0, 		#ignore directories and sub directories under cwd
+	no_sub_cwd => 0, 	#ignore directories and sub directories under cwd
 	no_sub_db => 0, 	#ignore directories under the database entries
 
 	black_listed_directories => [] ,
@@ -779,6 +815,10 @@ if($db_fh->open(get_db_location(), 'r'))
 			}
 		}
 	}
+else
+	{
+	die "Jump: Can't open database for reading! $!" ;
+	}
 
 return \%db ;
 }
@@ -789,7 +829,7 @@ sub write_db
 {
 my ($db) = @_ ;
 
-open my $db_fh, '>', get_db_location() ;
+open my $db_fh, '>', get_db_location() or die "Jump: Can't open database for writing! $!" ;
 
 while(my ($p, $w) = each %{$db})
 	{
@@ -882,6 +922,122 @@ sub show_help
 { 
 print STDERR `perldoc App::Term::Jump`  or warn 'Can\'t display help!' ; ## no critic (InputOutput::ProhibitBacktickOperators)
 exit(1) ;
+}
+
+#------------------------------------------------------------------------------------------------------------------------
+
+sub do_bash_completion
+{
+=pod
+
+I<Arguments> received from bash:
+
+=over 2
+
+=item * $index - index of the command line argument to complete (starting at '1')
+
+=item * $command - a string containing the command name
+
+=item * \@arguments - list of the arguments typed on the command line
+
+=back
+
+=cut
+
+my ($argument_index, $command, @arguments) = @ARGV ;
+
+$argument_index-- ;
+my $word_to_complete = $arguments[$argument_index] ;
+
+if(defined $word_to_complete && $word_to_complete =~ /^-/)
+        {
+	my ($option_separator) = $word_to_complete =~ m/^\s*(-+)/ ;
+	$word_to_complete =~ s/^\s*-*// ;
+	$word_to_complete =~ s/\s+$// ;
+
+        my $trie = new Tree::Trie;
+        
+	$trie->add( 
+		qw(
+		search
+		file
+		complete
+		a add
+		r remove
+		remove_all
+		s show_database
+		show_setup_files
+		no_direct_path
+		no_sub_cwd
+		no_sub_db
+
+		v version
+		h help
+		)) ;
+
+        print join("\n", map { "$option_separator$_" } $trie->lookup($word_to_complete) ) ;
+        }
+else
+        {
+	my %with_completion = map {("-$_" => 1, "--$_" => 1)}
+		qw(
+		search
+		complete
+		remove
+		remove_all 
+		) ;
+	
+	my @without_completion =
+		qw(
+		file
+		add
+		show_database
+		show_setup_files
+		version
+		help
+		) ;
+
+	my $do_completion = grep { exists $with_completion{$_} } @arguments ;
+	
+	if($do_completion)
+		{
+		#$App::Term::Jump::debug++ ;
+
+		my ($options, $search_arguments) = parse_command_line(@arguments) ;
+
+		if($options->{remove})
+			{
+			#allow completion of db entries only
+
+			$App::Term::Jump::no_direct_path++;
+			$App::Term::Jump::no_sub_cwd++ ;
+			$App::Term::Jump::no_sub_db++ ;
+
+			@arguments = ('.') if 1 == @arguments ; # force completion to whole db if no arguments are given
+			}
+
+		my @completions = _complete($search_arguments, $options->{file}) ;
+
+		#use Data::TreeDumper ;
+		#print STDERR DumpTree {command => $command, index => $argument_index, arguments => \@arguments, completions => \@completions} ;
+
+		if(0 == @completions)
+			{
+			# no completion
+			}
+		elsif(1 == @completions)
+			{
+			print ("1 match\n" . ($completions[0]{source} || $completions[0]{path})) ;
+			}
+		else
+			{
+			#use Data::TreeDumper ;
+			#warn DumpTree \@completions ;
+			print scalar(@completions) . " matches:\n" ;
+			print (($_->{source} || $_->{path}) . "\n") for @completions ;
+			}
+		}
+	}
 }
 
 #------------------------------------------------------------------------------------------------------------------------

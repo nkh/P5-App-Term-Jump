@@ -184,7 +184,7 @@ my $build = $class->new
 		[
 		'scripts/jump',
 		'scripts/jump_bash_completion.pl',
-		'scripts/bash_integration.sh',
+		'scripts/jump_bash_integration.sh',
 		],
 
 	dist_author  => 'Khemir Nadim ibn Hamouda. <nadim.khemir@gmail.com>',

@@ -400,6 +400,13 @@ my $end_directory_to_match = $paths[-1] ;
 my $path_to_match_without_end_directory =  @paths > 1 ? join('.*', @paths[0 .. $#paths-1]) : qr// ;
 $path_to_match_without_end_directory =~ s[^\./][$cwd] ;
 
+if($paths[0] =~ m[^/])
+	{
+	$path_to_match = "^$path_to_match" ;
+	$path_to_match_without_end_directory = "^$path_to_match_without_end_directory" ;
+	}	
+	
+
 warn DumpTree
 	{
 	paths => \@paths,
@@ -536,7 +543,7 @@ if(! $config->{no_sub_db} && ($find_all || 0 == keys %matches))
 	{
 	# matching directories under database entries
  
-	for my $db_entry (sort {length($b) <=> length($a) || $b cmp $a} keys %{$db})
+	for my $db_entry (sort {length($b) <=> length($a) || $a cmp $b} keys %{$db})
 		{
 		my $cumulated_path_weight = get_paths_weight($db, File::Spec->splitdir($db_entry)) ;	
 
@@ -688,7 +695,7 @@ sub show_database
 {
 my $db = read_db() ;
 
-for my $path (sort {$db->{$b} <=> $db->{$a}} keys %{$db} )
+for my $path (sort {$db->{$b} <=> $db->{$a} || $a cmp $b} keys %{$db} )
 	{
 	print "$db->{$path} $path\n" ;
 	}
@@ -1011,8 +1018,7 @@ else
 
 		my @completions = _complete($search_arguments, $options->{file}) ;
 
-		#use Data::TreeDumper ;
-		#print STDERR DumpTree {command => $command, index => $argument_index, arguments => \@arguments, completions => \@completions} ;
+		#print STDERR DumpTree {command => $command, index => $argument_index, options => $options, arguments => $search_arguments, completions => \@completions} ;
 
 		if(0 == @completions)
 			{
@@ -1020,14 +1026,31 @@ else
 			}
 		elsif(1 == @completions)
 			{
-			print ("1 match\n" . ($completions[0]{source} || $completions[0]{path})) ;
+			print "1 db match:\n" ;
+			print (($completions[0]{source} || $completions[0]{path}) . "\n") ;
+
+			if(1 == @{$search_arguments})
+				{
+				my ($path, $name) = $search_arguments->[0] =~ m[^(.*/)?(.*)] ;
+				$path ||= '.' ;
+				$name ||= '' ;
+
+				print "$_/\n" for (File::Find::Rule->maxdepth(1)->directory()->name("$name*")->in($path)) ;
+				}
 			}
 		else
 			{
-			#use Data::TreeDumper ;
-			#warn DumpTree \@completions ;
-			print scalar(@completions) . " matches:\n" ;
-			print (($_->{source} || $_->{path}) . "\n") for @completions ;
+			print scalar(@completions) . " db matches:\n" ;
+			print (($_->{source} || $_->{path}) . "\n") for(@completions) ;
+
+			if(1 == @{$search_arguments})
+				{
+				my ($path, $name) = $search_arguments->[0] =~ m[^(.*/)?(.*)] ;
+				$path ||= '.' ;
+				$name ||= '' ;
+
+				print "$_/\n" for (File::Find::Rule->maxdepth(1)->directory()->name("$name*")->in($path)) ;
+				}
 			}
 		}
 	}

@@ -12,7 +12,7 @@ lib/App/Term/Jump.pm
 
 scripts/jump
 scripts/jump_bash_completion.pl
-scripts/bash_integration.sh
+scripts/jump_bash_integration.sh
 
 t/match_many.t
 t/match.t

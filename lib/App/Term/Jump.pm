@@ -54,6 +54,7 @@ command line or integrated with Bash.
   -v|version		show version information and exit
   -h|help		show this help
 
+  -q|quote		double quote results
   -ignore_case		do a case insensitive search
   -no_direct_path	ignore directories directly under cwd
   -no_sub_cwd		ignore directories and sub directories under cwd
@@ -69,6 +70,7 @@ command line or integrated with Bash.
 	{
 	black_listed_directories => [string, qr] , # paths matching are not added to db
 
+	quote => 0		# doubl quote results
 	ignore_case => 0, 	# case insensitive search and completion
 
 	no_direct_path => 0, 	# ignore directories directly under cwd
@@ -80,12 +82,6 @@ command line or integrated with Bash.
 
   APP_TERM_JUMP_DB	name of the database file
   APP_TERM_JUMP_CONFIG	name of the configuration file
-
-=head1 NAVIGATION
-
-To naviate your directory structure I<jump> must be integrate with your shell.
-
-TBD
 
 =head1 COMMANDS
 
@@ -235,12 +231,18 @@ will return /path_part/path_part3/C
 
   $> j --complete path_part [path_part] ...
 
-will return a list of matches that an be used to integrate with the I<cd> command. Read add_jump.sh in the distribution
+will return a list of matches that an be used to integrate with the I<cd> command. Read jump_bash_integration.sh in the distribution
 
 =head2 Matching files
 
 the I<--file> option let you specify a file regex which will be use by I<Jump> to further refine your search. Once all
 the matching possible matching directories are found, each directory is checked for files matching the regexp.
+
+=head1 EXIT CODE
+
+  0 in case of success, which may or may not return any match
+
+  not 0 in case of error
 
 =head1 SEE ALSO
 
@@ -258,10 +260,13 @@ the matching possible matching directories are found, each directory is checked 
 
 $|++ ;
 
-my $FIND_ALL = 1 ;
 my $FIND_FIRST = 0 ;
+my $FIND_ALL = 1 ;
 
-our ($ignore_case, $no_direct_path, $no_sub_cwd, $no_sub_db, $debug) ;
+my $SOURCE_OR_PATH = 0 ;
+my $PATH = 1 ;
+
+our ($quote, $ignore_case, $no_direct_path, $no_sub_cwd, $no_sub_db, $debug) ;
 
 #------------------------------------------------------------------------------------------------------------------------
 
@@ -328,8 +333,9 @@ die 'Error parsing options!' unless
 
 		'show_configuration_files' => \$options{show_configuration_files},
 		'v|V|version' => \$options{version},
-                'h|help' => \$options{show_help}, 
+                'h|help' => \$options{help}, 
 
+		'q|quote' => \$options{quote},
 		'ignore_case' => \$options{ignore_case},
 		'no_direct_path' => \$options{no_direct_path},
 		'no_sub_cwd' => \$options{no_sub_cwd},
@@ -338,9 +344,9 @@ die 'Error parsing options!' unless
 		'd|debug' => \$options{debug},
                 ) ;
 	
-($ignore_case, $no_direct_path, $no_sub_cwd, $no_sub_db, $debug) = @options{qw(ignore_case no_direct_path no_sub_cwd no_sub_db debug)} ;
+($quote, $ignore_case, $no_direct_path, $no_sub_cwd, $no_sub_db, $debug) = @options{qw(quote ignore_case no_direct_path no_sub_cwd no_sub_db debug)} ;
 
-# broken bah completion gives use file regext with quotes from command line!
+# broken bash completion gives use file regext with quotes from command line!
 $options{file} = $1 if(defined $options{file} && $options{file} =~ /^(?:'|")(.*)(?:'|")$/) ;
 
 return (\%options, \@ARGV) ;
@@ -352,7 +358,7 @@ sub complete
 {
 my (@matches) = _complete(@_) ;
 
-print (($_->{source} || $_->{path}) . "\n") for @matches ;
+print_matches($SOURCE_OR_PATH, \@matches) ;
 
 return(@matches) ;
 }
@@ -378,9 +384,27 @@ my (@matches) = find_closest_match($FIND_FIRST, $search_arguments) ;
 
 @matches = directory_contains_file(\@matches, $file) if defined $file ;
 
-print "$matches[0]{path}\n" if @matches ;
+print_matches($PATH, [$matches[0]]) if(@matches) ;
 
 return (@matches) ;
+}
+
+#------------------------------------------------------------------------------------------------------------------------
+
+sub print_matches
+{
+my ($field, $matches) = @_;
+
+for (@{$matches})
+	{
+	my $result = $field == $PATH ? $_->{path} : ($_->{source} || $_->{path}) ;
+		
+	my $quotes = $quote ? '"' : '' ;
+
+	print "$quotes$result$quotes\n" ;
+	}
+
+return ;
 }
 
 #------------------------------------------------------------------------------------------------------------------------
@@ -513,10 +537,9 @@ for my $db_entry (sort keys %{$db})
 			@path_partial_matches ;
 	}
 	
+# matching sub directories under cwd 
 if(! $config->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 	{
-	# matching sub directories under cwd 
-
 	for my $directory (sort File::Find::Rule->directory()->in($cwd))
 		{
 		my $sub_directory = $directory =~ s[^$cwd][]r ;
@@ -539,10 +562,9 @@ if(! $config->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 	@cwd_sub_directory_matches = sort {$b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} @cwd_sub_directory_matches ;
 	}
 
+# matching directories under database entries
 if(! $config->{no_sub_db} && ($find_all || 0 == keys %matches))
 	{
-	# matching directories under database entries
- 
 	for my $db_entry (sort {length($b) <=> length($a) || $a cmp $b} keys %{$db})
 		{
 		my $cumulated_path_weight = get_paths_weight($db, File::Spec->splitdir($db_entry)) ;	
@@ -566,7 +588,7 @@ if(! $config->{no_sub_db} && ($find_all || 0 == keys %matches))
 			@sub_directory_matches ;
 	}
 
-return (@direct_matches, @directory_full_matches, @directory_partial_matches, @cwd_sub_directory_matches, @sub_directory_matches, @path_partial_matches) ;
+return (@direct_matches, @directory_full_matches, @directory_partial_matches, @path_partial_matches, @cwd_sub_directory_matches, @sub_directory_matches) ;
 }
 				
 #------------------------------------------------------------------------------------------------------------------------
@@ -927,7 +949,7 @@ return grep {$path =~ $_} @{ $config->{black_listed_directories} } ;
 
 sub show_help
 { 
-print STDERR `perldoc App::Term::Jump`  or warn 'Can\'t display help!' ; ## no critic (InputOutput::ProhibitBacktickOperators)
+print STDERR `perldoc App::Term::Jump` or warn 'Can\'t display help!' ; ## no critic (InputOutput::ProhibitBacktickOperators)
 exit(1) ;
 }
 
@@ -935,21 +957,26 @@ exit(1) ;
 
 sub do_bash_completion
 {
-=pod
+
+my $ignore = <<'IGNORE' ;
+
+#=pod
 
 I<Arguments> received from bash:
 
-=over 2
+#=over 2
 
-=item * $index - index of the command line argument to complete (starting at '1')
+#=item * $index - index of the command line argument to complete (starting at '1')
 
-=item * $command - a string containing the command name
+#=item * $command - a string containing the command name
 
-=item * \@arguments - list of the arguments typed on the command line
+#=item * \@arguments - list of the arguments typed on the command line
 
-=back
+#=back
 
-=cut
+#=cut
+
+IGNORE
 
 my ($argument_index, $command, @arguments) = @ARGV ;
 

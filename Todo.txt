@@ -2,6 +2,16 @@
 # This is Todo.txt #
 #------------------#
 
+search ->only in DB and in filesystem is none found
+complete -> Db, filesystem, part of db
+	because we want to emulate cd as naturaly as possible thus looking for matches localy before looking at ub DB entries
+	maybe sub db entries should not be returned if no direct match!
+
+remove package globals
+
+test for entries containing space
+	test quoting
+
 error: xt/author/ last slash stops the matching of db entry
 	entry in db does not have ending /
 
@@ -9,7 +19,7 @@ error: xt/auth   does not match /tmp/devel/xt/author
 
 error: cdd devel returns two matches but cdd devel/ just one, should be two
 
-why are we using length  instead for weight or path weight
+why are we using length  instead for weight or path weight and why is the first b <=> c and the second a <=> b?
 	for my $db_entry (sort {length($b) <=> length($a) || $a cmp $b} keys %{$db})
 
 option to quote or zero results for bash

@@ -255,3 +255,38 @@ END_OF_YAML
 	) ;
 
 
+#---------------
+jump_test
+	(
+	name => 'argument with slash',
+
+	directories_and_db => <<'END_OF_YAML' ,
+A:
+ BB:
+  in_db: 5 
+END_OF_YAML
+
+ 	tests =>
+		[
+		{
+		cd => 'TD/A', # make sure we don't find the searched path under cwd
+		command => q{ run('--search', 'A') },
+		db_expected => {'TD/A/BB' => 5,},
+		captured_output_expected => ['TD/A'], 
+		} ,
+		{
+		cd => 'TD/A', # make sure we don't find the searched path under cwd
+		command => q{ run('--search', 'B') },
+		db_expected => {'TD/A/BB' => 5,},
+		captured_output_expected => ['TD/A/BB'], 
+		} ,
+		{
+		cd => 'TD/A', # make sure we don't find the searched path under cwd
+		command => q{ run('--search', 'A/B') },
+		db_expected => {'TD/A/BB' => 5,},
+		captured_output_expected => ['TD/A/BB'], 
+		} ,
+		]
+	) ;
+
+

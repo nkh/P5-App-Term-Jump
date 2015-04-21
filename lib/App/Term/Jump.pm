@@ -419,7 +419,7 @@ my ($find_all, $paths) = @_ ;
 my @paths = @{ $paths } ;
 
 return unless @paths ;
-	
+
 my $cwd = cwd() ;
 
 my $path_to_match = join('.*', @paths) ;
@@ -433,12 +433,11 @@ if($paths[0] =~ m[^/])
 	$path_to_match_without_end_directory = "^$path_to_match_without_end_directory" ;
 	}	
 	
-
 warn DumpTree
 	{
-	paths => \@paths,
-	path => $path_to_match_without_end_directory,
 	end_directory => $end_directory_to_match,
+	path => $path_to_match_without_end_directory,
+	paths => \@paths,
 	} if $debug ;
 
 my %matches ;
@@ -515,7 +514,7 @@ for my $db_entry (sort keys %{$db})
 			$matches{$db_entry}++ ;
 			}
 		}
-	elsif(my ($part_of_path_matched) = $db_entry =~  m[$ignore_case(.*$path_to_match.*?)/])
+	elsif(my ($part_of_path_matched) = $db_entry =~ m[$ignore_case(.*$path_to_match[^/]*)])
 		{
 		warn "matches part of path in db entry: $db_entry\n" if $debug ;
 		
@@ -545,6 +544,8 @@ if(! $config->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 	{
 	for my $directory (sort File::Find::Rule->directory()->in($cwd))
 		{
+		next if $directory eq $cwd ;
+
 		my $sub_directory = $directory =~ s[^$cwd][]r ;
 		my $cwd_path_to_match = $path_to_match =~ s[^\./][/]r ;
 
@@ -574,6 +575,8 @@ if(! $config->{no_sub_db} && ($find_all || 0 == keys %matches))
 
 		for my $directory (sort File::Find::Rule->directory()->in($db_entry))
 			{
+			next if $directory eq $db_entry ;
+
 			if(my ($part_of_path_matched) = $directory =~  m[$ignore_case(.*$path_to_match.*?)(/|$)])
 				{
 				warn "matches sub directory under database entry: $directory\n" if $debug ;

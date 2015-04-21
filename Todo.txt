@@ -2,11 +2,6 @@
 # This is Todo.txt #
 #------------------#
 
-search ->only in DB and in filesystem is none found
-complete -> Db, filesystem, part of db
-	because we want to emulate cd as naturaly as possible thus looking for matches localy before looking at ub DB entries
-	maybe sub db entries should not be returned if no direct match!
-
 remove package globals
 
 test for entries containing space

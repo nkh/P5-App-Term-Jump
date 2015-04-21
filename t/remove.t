@@ -93,6 +93,11 @@ END_OF_YAML
 		command => q{ run('--remove_all', 'A', 'C') },
 		db_expected => {'TD/B' => 1},
 		} ,
+		{
+		name => 'path ending with /',
+		command => q{ run('--remove_all', 'B/') },
+		db_expected => {},
+		} ,
 		]
 	) ;
 

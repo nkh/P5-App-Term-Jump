@@ -349,6 +349,9 @@ die 'Error parsing options!' unless
 # broken bash completion gives use file regext with quotes from command line!
 $options{file} = $1 if(defined $options{file} && $options{file} =~ /^(?:'|")(.*)(?:'|")$/) ;
 
+# remove trailing slash, except for root
+@ARGV = map {s[(.)/$][$1]; $_} @ARGV ;
+
 return (\%options, \@ARGV) ;
 }
 

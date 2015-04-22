@@ -31,7 +31,7 @@ END_OF_YAML
 		[
 		{
 		name => 'add space', 
-		command => q{ run('--add', '5', 'DIRECTORIES/A3/SPACE IN DB') },
+		command => q{ run('--debug', '--add', '5', 'DIRECTORIES/A3/SPACE IN DB') },
 		db_expected => 
 			{
 			'TD/DIRECTORIES/THE SPACE/B/C' => 1,

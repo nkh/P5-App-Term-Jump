@@ -15,7 +15,6 @@ our $VERSION = '0.5' ;
 use Test::Exception ;
 use Test::Warn;
 use Test::NoWarnings qw(had_no_warnings);
-#use Test::Block qw($Plan);
 use Test::Deep ;
 use Test::More qw(no_plan) ;
 
@@ -31,7 +30,6 @@ use YAML ;
 
 use App::Term::Jump ;
 
-
 #------------------------------------------------------------------------------------------------------------------------
 
 sub jump_test
@@ -39,7 +37,6 @@ sub jump_test
 my (%setup_arguments) = @_ ;
 
 $setup_arguments{caller} = join(':', @{[caller()]}[1 .. 2]) ;
-
 $setup_arguments{name} =~ s/ +/_/g ;
 
 if(exists $setup_arguments{directories_and_db})
@@ -51,7 +48,8 @@ if(exists $setup_arguments{directories_and_db})
 my $start_directory = cwd() ;
 my $test_directory = cwd() ;
 my $using_temporary_directory = 0 ;
-my $temporary_database ;
+
+my ($jump_options, $command_line_arguments) = App::Term::Jump::parse_command_line() ; # sets default db and config
 
 # temporary test directory
 if(exists $setup_arguments{temporary_directory_structure})
@@ -65,9 +63,6 @@ if(exists $setup_arguments{temporary_directory_structure})
 
 	# database --------------------------------------------------
 
-	$temporary_database = "$test_directory/temporary_jump_database" ;
-	local $ENV{APP_TERM_JUMP_DB} = $temporary_database ;
-
 	my @db_interpolated ;
 	while (my ($k, $v) = each %{$setup_arguments{db_start}})
 		{
@@ -76,24 +71,23 @@ if(exists $setup_arguments{temporary_directory_structure})
 		push @db_interpolated, $k, $v ;
 		}
 
-	App::Term::Jump::write_db({@db_interpolated}) ;
+	$jump_options->{db_location} = "$test_directory/temporary_jump_database" ;
+	App::Term::Jump::write_db($jump_options, {@db_interpolated}) ;
 	}
 
-local $ENV{APP_TERM_JUMP_DB} = $temporary_database if exists $setup_arguments{temporary_directory_structure} ;
-
+local $ENV{APP_TERM_JUMP_DB} = $jump_options->{db_location} if exists $jump_options->{db_location} ;
+ 
 # configuration ----------------------------------------------
 
-my $temporary_configuration ;
 if(exists $setup_arguments{configuration})
 	{ 
-	$temporary_configuration = "$test_directory/temporary_jump_configuration" ;
+	$jump_options->{config_location} = "$test_directory/temporary_jump_configuration" ;
 
 	use File::Slurp ;
-	File::Slurp::write_file($temporary_configuration, $setup_arguments{configuration}) ;
+	File::Slurp::write_file($jump_options->{config_location}, $setup_arguments{configuration}) ;
 	}
 
-local $ENV{APP_TERM_JUMP_CONFIG} = $temporary_configuration if(exists $setup_arguments{configuration}) ;
-$setup_arguments{configuration} = App::Term::Jump::get_config() if(exists $setup_arguments{configuration}) ;
+local $ENV{APP_TERM_JUMP_CONFIG} = $jump_options->{config_location} if exists $jump_options->{config_location} ;
 
 # tests -------------------------------------------------------
 
@@ -106,7 +100,7 @@ for my $test (@{$setup_arguments{tests}})
 	exists $test->{cd} ? chdir($test->{cd}) : chdir($test_directory) ;
 
 	$test_index++ ;
-	my $test_name = $test->{name} || '' ;
+	my $test_name = $test->{name} ||= "missing name '$setup_arguments{caller}'" ;
 
 	die "Error: need 'command' or 'commands' fields in a test '$test_name::$test_index'" , DumpTree($test)
 		if ! exists $test->{command} &&  ! exists $test->{commands} ;
@@ -127,53 +121,48 @@ for my $test (@{$setup_arguments{tests}})
 	$test->{matches_expected} = [map { s/TD/$test_directory/g ; s/TEMPORARY_DIRECTORY/$test_directory/g ; $_ }  @{$test->{matches_expected}}]
 		if exists $test->{matches_expected} ;
 
-	my ($weight, $cumulated_path_weight, @matches) ;
-
 	use IO::Capture::Stdout;
 	my $capture = IO::Capture::Stdout->new();
 	$capture->start();
 
-	if(exists $test->{warnings_expected})
+	my $run_test_command = 
+		sub
 		{
-		warnings_like
-		        {
-			for my $command (@{ $test->{commands} })
-				{
-				$command =~ s/^\s+// ;
-				$command =~ s/TD/$test_directory/g ;
-				$command =~ s/TEMPORARY_DIRECTORY/$test_directory/g ;
+		my ($commands) = @_ ;
 
-				eval ('(@matches) = App::Term::Jump::' . $command) ;
-				$test->{weight} = $weight = $matches[0]{weight} if @matches ;
-				$test->{weight_path} = $cumulated_path_weight = $matches[0]{cumulated_path_weight} if @matches ;
-				$test->{matches} = \@matches ;
-
-				die $@ if $@ ;
-				}
-
-	        	} $test->{warnings_expected}, "warnings expected '$test_name::$test_index'" ;
-		}
-	else
-		{
-		for my $command (@{ $test->{commands} })
+		for my $command (@{ $commands })
 			{
 			$command =~ s/^\s+// ;
 			$command =~ s/TD/$test_directory/g ;
 			$command =~ s/TEMPORARY_DIRECTORY/$test_directory/g ;
 
-			eval ('(@matches) = App::Term::Jump::' . $command) ;
-			$test->{weight} = $weight = $matches[0]{weight} if @matches ;
-			$test->{weight_path} = $cumulated_path_weight = $matches[0]{cumulated_path_weight} if @matches ;
-			$test->{matches} = \@matches ;
+			my $matches ;
+			eval ('$matches = App::Term::Jump::' . $command) ;
+
+			$test->{weight} =  $matches->[0]{weight} if @{$matches} ;
+			$test->{weight_path} = $matches->[0]{cumulated_path_weight} if @{$matches} ;
+			$test->{matches} = $matches ;
 
 			die $@ if $@ ;
 			}
+		} ;
+
+	if(exists $test->{warnings_expected})
+		{
+		warnings_like
+		        {
+			$run_test_command->($test->{commands}) ;
+	        	} $test->{warnings_expected}, "warnings expected '$test_name::$test_index'" ;
+		}
+	else
+		{
+		$run_test_command->($test->{commands}) ;
 		}
 
 	$capture->stop() ;
 	$test->{captured_output} = [map {chomp ; $_} $capture->read()] if exists $test->{captured_output_expected} ;
 	
-	$test->{db_after_command} = App::Term::Jump::read_db() ;
+	$test->{db_after_command} = App::Term::Jump::read_db($jump_options) ;
 
 	do { cmp_deeply($test->{captured_output}, $test->{captured_output_expected}, "output-$setup_arguments{name}-$test_name::$test_index") or $error++}
 		if exists $test->{captured_output_expected} ;
@@ -182,17 +171,17 @@ for my $test (@{$setup_arguments{tests}})
 		{
 		 cmp_deeply
 			(
-			[ map{$_->{source} || $_->{path}} @matches],
+			[ map{$_->{source} || $_->{path}} @{ $test->{matches} }],
 			$test->{matches_expected},
 			"matches-$setup_arguments{name}-$test_name::$test_index"
 			) or $error++
 		}
 		if exists $test->{matches_expected} ;
 
-	do { is($weight, $test->{weight_expected}, "weight-$setup_arguments{name}-$test_name::$test_index") or $error++}
+	do { is($test->{weight}, $test->{weight_expected}, "weight-$setup_arguments{name}-$test_name::$test_index") or $error++}
 		if exists $test->{weight_expected} ;
 	
-	do { is($cumulated_path_weight, $test->{weight_path_expected}, "weight_path-$setup_arguments{name}-$test_name::$test_index") or $error++}
+	do { is($test->{weight_path}, $test->{weight_path_expected}, "weight_path-$setup_arguments{name}-$test_name::$test_index") or $error++}
 		if exists $test->{weight_path_expected} ;
 	
 	do { cmp_deeply($test->{db_after_command}, $test->{db_expected}, "DB contents-$setup_arguments{name}-$test_name::$test_index") or $error++ }
@@ -234,6 +223,8 @@ chdir($start_directory) ;
 File::Path::Tiny::rm($test_directory) if $using_temporary_directory && ! $error ;
 }
 
+# ---------------------------------------------------------------------------------------------------
+
 sub create_directory_structure
 {
 my ($directory_structure, $temporary_directory_root, $template, $allowed_characters_in_directory_name) = @_ ;
@@ -244,6 +235,8 @@ _create_directory_structure($directory_structure, $temp_directory) ;
 
 return $temp_directory ;
 }
+
+# ---------------------------------------------------------------------------------------------------
 
 sub _create_directory_structure
 {
@@ -272,7 +265,11 @@ while( my ($entry_name, $contents) = each %{$directory_structure})
         }
 }
 
+# ---------------------------------------------------------------------------------------------------
+
 my $temporary_directory_increment = 0 ;
+
+# ---------------------------------------------------------------------------------------------------
 
 sub create_temporary_directory
 {
@@ -300,6 +297,7 @@ die "Could not create temporary directory '$temporary_directory_root': $!" unles
 return $dir ;
 }
 
+# ---------------------------------------------------------------------------------------------------
 
 sub get_directories_and_db
 {
@@ -340,6 +338,7 @@ DumpTree $directory_structure, 'munged', NO_OUTPUT => 1, FILTER => $get_db_paths
 return ($directory_structure, \%db_paths) ;
 }
 
+# ---------------------------------------------------------------------------------------------------
 
 1 ;
 

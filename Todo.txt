@@ -4,10 +4,6 @@
 
 move .git outside the module directory
 
-remove package globals
-
-error: cdd devel returns two matches but cdd devel/ just one, should be two
-
 why are we using length  instead for weight or path weight and why is the first b <=> c and the second a <=> b?
 	for my $db_entry (sort {length($b) <=> length($a) || $a cmp $b} keys %{$db})
 

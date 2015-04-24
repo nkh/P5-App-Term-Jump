@@ -290,3 +290,88 @@ END_OF_YAML
 	) ;
 
 
+#---------------
+jump_test
+	(
+	name => 'ignore directory in search',
+
+	directories_and_db => <<'END_OF_YAML' ,
+A:
+ BB:
+  in_db: 5 
+ .GIT:
+  A: {}
+  B: {}
+  C: {}
+ CC:
+  IGNORE:
+   CCC: {}
+  DDD:
+   CC: {}
+
+END_OF_YAML
+
+ 	tests =>
+		[
+		{
+		command => q{ run('--search', 'C') },
+		db_expected => {'TD/A/BB' => 5,},
+		captured_output_expected => ['TD/A/.GIT/C'], 
+		matches_expected => 
+			[
+			'TD/A/.GIT/C',
+			'TD/A/CC',
+			'TD/A/CC/DDD',
+			'TD/A/CC/IGNORE',
+			'TD/A/CC/DDD/CC',
+			'TD/A/CC/IGNORE/CCC',
+			],
+		},
+		{
+		name => 'ignore .git and pattern',
+		command => q{ run('--ignore_path', '^\.GIT', '--ignore_path', 'IGN', '--search', 'C') },
+		captured_output_expected => ['TD/A/CC'], 
+		matches_expected => 
+			[
+			'TD/A/CC',
+			'TD/A/CC/DDD',
+			'TD/A/CC/DDD/CC',
+			],
+		},
+		{
+		name => 'ignore via configuration file',
+		configuration => <<'EOC',
+			{
+			ignore_path => [qr/^\.GIT/, 'IGN'],
+			} 
+EOC
+		#show_test => 1,
+		#parsed_options => 1,
+		command => q{ run('--search', 'C') },
+		captured_output_expected => ['TD/A/CC'], 
+		matches_expected => 
+			[
+			'TD/A/CC',
+			'TD/A/CC/DDD',
+			'TD/A/CC/DDD/CC',
+			],
+		},
+		{
+		name => 'ignore via configuration file and cli',
+		configuration => <<'EOC',
+			{
+			ignore_path => [qr/^\.GIT/],
+			}
+EOC
+		command => q{ run('--ignore_path', 'IGN', '--search', 'C') },
+		captured_output_expected => ['TD/A/CC'], 
+		matches_expected => 
+			[
+			'TD/A/CC',
+			'TD/A/CC/DDD',
+			'TD/A/CC/DDD/CC',
+			],
+		},
+		],
+	) ;
+ 

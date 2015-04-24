@@ -27,6 +27,7 @@ use Data::TreeDumper ;
 use Data::TreeDumper::Utils qw(:all) ;
 use Clone qw(clone) ;
 use YAML ;
+use File::Slurp ;
 
 use App::Term::Jump ;
 
@@ -77,18 +78,6 @@ if(exists $setup_arguments{temporary_directory_structure})
 
 local $ENV{APP_TERM_JUMP_DB} = $jump_options->{db_location} if exists $jump_options->{db_location} ;
  
-# configuration ----------------------------------------------
-
-if(exists $setup_arguments{configuration})
-	{ 
-	$jump_options->{config_location} = "$test_directory/temporary_jump_configuration" ;
-
-	use File::Slurp ;
-	File::Slurp::write_file($jump_options->{config_location}, $setup_arguments{configuration}) ;
-	}
-
-local $ENV{APP_TERM_JUMP_CONFIG} = $jump_options->{config_location} if exists $jump_options->{config_location} ;
-
 # tests -------------------------------------------------------
 
 my $test_index = -1 ;
@@ -96,11 +85,31 @@ my $error ;
 
 for my $test (@{$setup_arguments{tests}})
 	{
-	$test->{cd} =~ s/TD/$test_directory/g if exists $test->{cd} ;
-	exists $test->{cd} ? chdir($test->{cd}) : chdir($test_directory) ;
-
 	$test_index++ ;
 	my $test_name = $test->{name} ||= "missing name '$setup_arguments{caller}'" ;
+
+	do {diag "Skipping test '$test_name'\n"; next} if $test->{skip} ;
+
+	# configuration ----------------------------------------------
+	if(exists $test->{configuration})
+		{ 
+		$jump_options->{config_location} = "$test_directory/temporary_jump_configuration" ;
+
+		File::Slurp::write_file($jump_options->{config_location}, $test->{configuration}) or die $! ;
+
+		$test->{configuration_warning} = "temporarily overridding config!" if exists $setup_arguments{configuration} ;
+		}
+	elsif(exists $setup_arguments{configuration})
+		{ 
+		$jump_options->{config_location} = "$test_directory/temporary_jump_configuration" ;
+
+		File::Slurp::write_file($jump_options->{config_location}, $setup_arguments{configuration}) or die $! ;
+		}
+
+	local $ENV{APP_TERM_JUMP_CONFIG} = $jump_options->{config_location} if exists $jump_options->{config_location} ;
+
+	$test->{cd} =~ s/TD/$test_directory/g if exists $test->{cd} ;
+	exists $test->{cd} ? chdir($test->{cd}) : chdir($test_directory) ;
 
 	die "Error: need 'command' or 'commands' fields in a test '$test_name::$test_index'" , DumpTree($test)
 		if ! exists $test->{command} &&  ! exists $test->{commands} ;
@@ -136,14 +145,16 @@ for my $test (@{$setup_arguments{tests}})
 			$command =~ s/TD/$test_directory/g ;
 			$command =~ s/TEMPORARY_DIRECTORY/$test_directory/g ;
 
-			my $matches ;
-			eval ('$matches = App::Term::Jump::' . $command) ;
+			my ($matches, $parsed_options) ;
+			eval ('($matches, $parsed_options)  = App::Term::Jump::' . $command) ;
+
+			die $@ if $@ ;
+
+			$test->{parsed_options} = $parsed_options if $test->{parsed_options} ;
 
 			$test->{weight} =  $matches->[0]{weight} if @{$matches} ;
 			$test->{weight_path} = $matches->[0]{cumulated_path_weight} if @{$matches} ;
 			$test->{matches} = $matches ;
-
-			die $@ if $@ ;
 			}
 		} ;
 
@@ -187,7 +198,7 @@ for my $test (@{$setup_arguments{tests}})
 	do { cmp_deeply($test->{db_after_command}, $test->{db_expected}, "DB contents-$setup_arguments{name}-$test_name::$test_index") or $error++ }
 		if exists $test->{db_expected} ;
   
-	if($error)
+	if($error || $test->{show_test})
 		{
 		$setup_arguments{test_failed_index} = $test_index ;
 

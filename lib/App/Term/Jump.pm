@@ -54,6 +54,7 @@ command line or integrated with Bash.
   -v|version		show version information and exit
   -h|help		show this help
 
+  -ignore_path		paths matching will not be be included
   -q|quote		double quote results
   -ignore_case		do a case insensitive search
   -no_direct_path	ignore directories directly under cwd
@@ -68,7 +69,8 @@ command line or integrated with Bash.
 =head1 CONFIGURATION FILE FORMAT
 
 	{
-	black_listed_directories => [string, qr] , # paths matching are not added to db
+	ignore_path => [string, qr], # paths listed will not match
+	black_listed_directories => [string, qr], # paths matching are not added to db
 
 	quote => 0		# doubl quote results
 	ignore_case => 0, 	# case insensitive search and completion
@@ -227,6 +229,11 @@ give multiple matches on the command line
  
 will return /path_part/path_part3/C
 
+=head2 Not matching everything
+
+When I<Jump> searches under the current working directory or in directories under database entries, thousands of
+matches can be returned. Option B<--ignore_path> disables the scanning of the given paths.
+
 =head1 Bash INTEGRATION and --complete
 
   $> j --complete path_part [path_part] ...
@@ -281,7 +288,7 @@ show_help() if($options->{help}) ;
 warn "\nJump: Error: no command given" unless 
 	grep {defined $options->{$_}} qw(search add remove remove_all show_database show_configuration_files version complete) ;
 
-return execute_commands($options, $command_line_arguments) ;
+return (execute_commands($options, $command_line_arguments), $options) ;
 }
 
 sub execute_commands
@@ -313,14 +320,13 @@ sub parse_command_line
 {
 local @ARGV = @_ ;
 
-my ($search, $file, $add, $remove, $remove_all, $show_database, $show_configuration_files, $version, $complete) ;
-
-my %options ;
+my %options = (ignore_path => []) ;
 
 $options{db_location} = defined $ENV{APP_TERM_JUMP_DB} ? $ENV{APP_TERM_JUMP_DB} : home() . '/.jump_db' ;
 $options{config_location} = defined $ENV{APP_TERM_JUMP_CONFIG} ? $ENV{APP_TERM_JUMP_CONFIG} : home() . '/.jump_config'  ;
 
 %options = ( %options, %{ get_config($options{config_location}) } ) ;
+
 
 die 'Error parsing options!' unless 
 	GetOptions
@@ -339,6 +345,8 @@ die 'Error parsing options!' unless
 		'show_configuration_files' => \$options{show_configuration_files},
 		'v|V|version' => \$options{version},
                 'h|help' => \$options{help}, 
+
+		'ignore_path=s' => $options{ignore_path},
 
 		'q|quote' => \$options{quote},
 		'ignore_case' => \$options{ignore_case},
@@ -369,9 +377,9 @@ if(-f $config_location)
 	{
 	unless ($config = do $config_location) 
 		{
-		warn "couldn't parse $config_location: $@" if $@;
-		warn "couldn't do $config_location: $!"    unless defined $config;
-		warn "couldn't run $config_location"       unless $config;
+		die "couldn't parse '$config_location': $@" if $@;
+		die "couldn't do '$config_location': $!"    unless defined $config;
+		die "couldn't run '$config_location'"       unless $config;
 		}
 	}
 else
@@ -382,7 +390,8 @@ else
 	print $new_config_fh <<EOC ;
 
 {
-black_listed_directories => [] , # sring or qr
+ignore_path => [] , # paths that will not match. string or qr
+black_listed_directories => [] , # pths that will not be added to the db. string or qr
 
 ignore_case => 0, 	#case insensitive search and completion
 
@@ -396,12 +405,14 @@ EOC
 		
 return
 	{
+	ignore_path => [], 	# path that will not match
+	black_listed_directories => [] , #paths that will not be added to the db
+
 	ignore_case => 0, 	#case insensitive search and completion
 	no_direct_path => 0, 	#ignore directories directly under cwd
 	no_sub_cwd => 0, 	#ignore directories and sub directories under cwd
 	no_sub_db => 0, 	#ignore directories under the database entries
 
-	black_listed_directories => [] ,
 
 	%{$config},
 	} ;
@@ -594,7 +605,10 @@ for my $db_entry (sort keys %{$db})
 # matching sub directories under cwd 
 if(! $options->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 	{
-	for my $directory (sort File::Find::Rule->directory()->in($cwd))
+	my @discard_rules = map { File::Find::Rule->new->directory->name(qr/$_/)->prune->discard } @{$options->{ignore_path}} ; 
+	my $search = File::Find::Rule->or(@discard_rules, File::Find::Rule->directory) ;
+
+	for my $directory (sort $search->in($cwd))
 		{
 		next if $directory eq $cwd ;
 
@@ -625,7 +639,10 @@ if(! $options->{no_sub_db} && ($find_all || 0 == keys %matches))
 		{
 		my $cumulated_path_weight = get_paths_weight($db, File::Spec->splitdir($db_entry)) ;	
 
-		for my $directory (sort File::Find::Rule->directory()->in($db_entry))
+		my @discard_rules = map { File::Find::Rule->new->directory->name(qr/$_/)->prune->discard } @{$options->{ignore_path}} ; 
+		my $search = File::Find::Rule->or(@discard_rules, File::Find::Rule->directory) ;
+
+		for my $directory (sort $search->in($db_entry))
 			{
 			next if $directory eq $db_entry ;
 

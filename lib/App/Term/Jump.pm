@@ -612,6 +612,8 @@ if(! $options->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 		{
 		next if $directory eq $cwd ;
 
+		warn "looking for matches in '$directory'\n" if $options->{debug} ;
+
 		my $sub_directory = $directory =~ s[^$cwd][]r ;
 		my $cwd_path_to_match = $path_to_match =~ s[^\./][/]r ;
 
@@ -645,6 +647,8 @@ if(! $options->{no_sub_db} && ($find_all || 0 == keys %matches))
 		for my $directory (sort $search->in($db_entry))
 			{
 			next if $directory eq $db_entry ;
+
+			warn "looking for matches in '$directory'\n" if $options->{debug} ;
 
 			if(my ($part_of_path_matched) = $directory =~  m[$ignore_case(.*$path_to_match.*?)(/|$)])
 				{
@@ -1024,6 +1028,7 @@ if(defined $word_to_complete && $word_to_complete =~ /^-/)
 		s show_database
 		show_setup_files
 
+		ignore_path
 		ignore_case
 		no_direct_path
 		no_sub_cwd
@@ -1065,7 +1070,7 @@ else
 			@arguments = ('.') if 1 == @arguments ; # force completion to whole db if no arguments are given
 			}
 
-		my @completions = _complete($options, $search_arguments) ;
+		my @completions = @{_complete($options, $search_arguments)} ;
 
 		#print STDERR DumpTree {command => $command, index => $argument_index, options => $options, arguments => $search_arguments, completions => \@completions} ;
 

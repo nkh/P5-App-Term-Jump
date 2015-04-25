@@ -13,7 +13,6 @@ use Cwd ;
 use Data::TreeDumper ;
 use Tree::Trie;
 
-
 our $VERSION = '0.04' ;
 
 =head1 NAME 
@@ -608,7 +607,7 @@ if(! $options->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 	my @discard_rules = map { File::Find::Rule->new->directory->name(qr/$_/)->prune->discard } @{$options->{ignore_path}} ; 
 	my $search = File::Find::Rule->or(@discard_rules, File::Find::Rule->directory) ;
 
-	for my $directory (sort $search->in($cwd))
+	for my $directory ($search->in($cwd))
 		{
 		next if $directory eq $cwd ;
 
@@ -631,30 +630,30 @@ if(! $options->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 			} 
 		}
 	
-	@cwd_sub_directory_matches = sort {$b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} @cwd_sub_directory_matches ;
+	@cwd_sub_directory_matches = sort {$b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{source} cmp $b->{source}} @cwd_sub_directory_matches ;
 	}
 
 # matching directories under database entries
 if(! $options->{no_sub_db} && ($find_all || 0 == keys %matches))
 	{
-	for my $db_entry (sort {length($b) <=> length($a) || $a cmp $b} keys %{$db})
+	for my $db_entry (sort {$db->{$b} <=> $db->{$a} || $a cmp $b } keys %{$db})
 		{
+		my $weight = $db->{$db_entry} ;
 		my $cumulated_path_weight = get_paths_weight($db, File::Spec->splitdir($db_entry)) ;	
 
 		my @discard_rules = map { File::Find::Rule->new->directory->name(qr/$_/)->prune->discard } @{$options->{ignore_path}} ; 
 		my $search = File::Find::Rule->or(@discard_rules, File::Find::Rule->directory) ;
 
-		for my $directory (sort $search->in($db_entry))
+		for my $directory ($search->in($db_entry))
 			{
 			next if $directory eq $db_entry ;
-
 			warn "looking for matches in '$directory'\n" if $options->{debug} ;
 
 			if(my ($part_of_path_matched) = $directory =~  m[$ignore_case(.*$path_to_match.*?)(/|$)])
 				{
 				warn "matches sub directory under database entry: $directory\n" if $options->{debug} ;
 				push @sub_directory_matches, 
-					{path => $part_of_path_matched, source => $directory, weight => 1, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under a db entry'} 
+					{path => $part_of_path_matched, source => $directory, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under a db entry'} 
 						unless exists $matches{$directory} ;
 
 				$matches{$directory}++ ;
@@ -663,7 +662,7 @@ if(! $options->{no_sub_db} && ($find_all || 0 == keys %matches))
 		}  
 
 	@sub_directory_matches = 
-		sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{path} cmp $b->{path}} 
+		sort {$b->{weight} <=> $a->{weight} || $b->{cumulated_path_weight} <=> $a->{cumulated_path_weight} || $a->{source} cmp $b->{source}} 
 			@sub_directory_matches ;
 	}
 

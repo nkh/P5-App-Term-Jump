@@ -2,8 +2,15 @@
 # This is Todo.txt #
 #------------------#
 
-move .git outside the module directory
+document test framework
 
-why are we using length  instead for weight or path weight and why is the first b <=> c and the second a <=> b?
-	for my $db_entry (sort {length($b) <=> length($a) || $a cmp $b} keys %{$db})
+document all code with standard header
+
+move documentation to application module
+
+run xt tests
+
+profile code (for fun)
+
+move .git outside the module directory
 

@@ -514,6 +514,7 @@ my $db = read_db($options) ;
 # matching direct paths
 if(1 == @paths && !$options->{no_direct_path})
 	{
+	warn "looking for direct matches\n" if $options->{debug} ;
 	my $path_to_match = $paths[0] ;
 
 	if($path_to_match =~ m[^/] && -d $path_to_match)
@@ -544,6 +545,8 @@ my $ignore_case = $options->{ignore_case} ? '(?i)' : '' ;
 #matching directories in database
 for my $db_entry (sort keys %{$db})
 	{
+	warn "looking for database  matches\n" if $options->{debug} ;
+
 	my @directories = File::Spec->splitdir($db_entry) ;
 	my $db_entry_end_directory = $directories[-1] ;
 
@@ -611,7 +614,7 @@ if(! $options->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 		{
 		next if $directory eq $cwd ;
 
-		warn "looking for matches in '$directory'\n" if $options->{debug} ;
+		warn "looking for matches in cwd sub directory '$directory'\n" if $options->{debug} ;
 
 		my $sub_directory = $directory =~ s[^$cwd][]r ;
 		my $cwd_path_to_match = $path_to_match =~ s[^\./][/]r ;
@@ -647,7 +650,7 @@ if(! $options->{no_sub_db} && ($find_all || 0 == keys %matches))
 		for my $directory ($search->in($db_entry))
 			{
 			next if $directory eq $db_entry ;
-			warn "looking for matches in '$directory'\n" if $options->{debug} ;
+			warn "looking for database matches in sub directory '$directory'\n" if $options->{debug} ;
 
 			if(my ($part_of_path_matched) = $directory =~  m[$ignore_case(.*$path_to_match.*?)(/|$)])
 				{

@@ -14,3 +14,8 @@ profile code (for fun)
 
 move .git outside the module directory
 
+seamless integration with cd 
+	any visited directory is added to the database
+ 
+	any visited directory is added to the database
+

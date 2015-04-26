@@ -42,6 +42,35 @@ Readonly my $PATH => 1 ;
 
 sub run
 {
+
+=head2 run(@command_line_arguments)
+
+Entry point of the module; called by the I<jump> script.
+
+I<Arguments> -
+
+=over 2
+
+=item * @command_line_arguments - options and values pased on the comman line
+
+=back
+
+I<Returns> - 
+
+=over 2
+
+=item * $matches - list of matches for the passed options and values
+
+=item * $options - parsed options
+
+=back
+
+I<Exceptions> - invalid options
+
+I<Note> - May call B<exit>
+
+=cut
+
 my (@command_line_arguments) = @_ ;
 
 my ($options, $command_line_arguments) = parse_command_line(@command_line_arguments) ;
@@ -56,7 +85,25 @@ return (execute_commands($options, $command_line_arguments), $options) ;
 
 sub execute_commands
 {
-# warning, if multipe commands are given on the command line, jump will run them at the same time
+
+=head2 execute_commands(\%options, \@command_line_arguments)
+
+Called to execute commands after the command line is parsed
+
+If multipe commands are given on the command line, jump will run them at the same time
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \@command_line_arguments - arguments parsed from the command line
+
+=back
+
+I<Returns> - An aray refeence - empty or the result of a search
+=cut
 
 my ($options, $command_line_arguments) = @_ ;
 
@@ -81,6 +128,31 @@ return $results ;
 
 sub parse_command_line
 {
+
+=head2 parse_command_line(@command_line_argumens)
+
+doc.
+
+I<Arguments> -
+
+=over 2
+
+=item * @command_line_arguments -  
+
+=back
+
+I<Returns> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \@command_line_arguments - arguments parsed from the command line
+
+I<Exceptions> - invalid options 
+
+=cut
+
 local @ARGV = @_ ;
 
 my %options = (ignore_path => []) ;
@@ -89,7 +161,6 @@ $options{db_location} = defined $ENV{APP_TERM_JUMP_DB} ? $ENV{APP_TERM_JUMP_DB} 
 $options{config_location} = defined $ENV{APP_TERM_JUMP_CONFIG} ? $ENV{APP_TERM_JUMP_CONFIG} : home() . '/.jump_config'  ;
 
 %options = ( %options, %{ get_config($options{config_location}) } ) ;
-
 
 die 'Error parsing options!' unless 
 	GetOptions
@@ -133,6 +204,24 @@ return (\%options, \@ARGV) ;
 
 sub get_config
 {
+
+=head2 get_config($config_location)
+
+Parses a file that contains the default configuration
+
+I<Arguments> -
+
+=over 2
+
+=item * $config_location - a string - path to the configuraation file
+
+=back
+
+I<Returns> - A hash ref - configuration file with defualt values if they are not present in the file
+
+I<Exceptions> - On config evaluation errors
+
+=cut
 my ($config_location) = @_ ;
 my $config = {} ;
 
@@ -185,6 +274,27 @@ return
 
 sub complete
 {
+
+=head2 complete(\%option, \@search_aguments)
+
+Prints and returns all the matches for a set of search options
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \@search_arguments -
+
+=back
+
+I<Returns> - an array reference - an array containing all the matches
+
+I<Exceptions> - None
+
+=cut
+
 my ($options, $search_arguments) = @_ ;
 my ($matches) = _complete($options, $search_arguments) ;
 
@@ -195,6 +305,27 @@ return $matches ;
 
 sub _complete
 {
+
+=head2 [p] _complete(\%options, \@search_arguments)
+
+Returns all the matches for a set of search options
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \@search_arguments -
+
+=back
+
+I<Returns> - an array reference - an array containing all the matches
+
+I<Exceptions> - None
+
+=cut
+
 my ($options, $search_arguments) = @_ ;
 
 my ($matches) = find_closest_match($options, $FIND_ALL, $search_arguments) ;
@@ -208,6 +339,27 @@ return $matches ;
 
 sub search
 {
+
+=head2 search(\%options, \@search_arguments)
+
+Prints the first match (truncated to the closes path) and returns all the matches for a set of search options
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \@search_arguments -
+
+=back
+
+I<Returns> - an array reference - an array containing all the matches
+
+I<Exceptions> - None
+
+=cut
+
 my ($options, $search_arguments) = @_ ;
 
 my ($matches) = find_closest_match($options, $FIND_FIRST, $search_arguments) ;
@@ -223,6 +375,29 @@ return $matches ;
 
 sub print_matches
 {
+
+=head2 print_matches(\%options, $field, \@matches)
+
+Prints the field, selected by $field, for all the matches 
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * $field - an enum used to select which feld to print
+
+=item * \@smatches - an array containing matches
+
+=back
+
+I<Returns> - Nothing 
+
+I<Exceptions> - None
+
+=cut
+
 my ($options, $field, $matches) = @_;
 
 for (@{$matches})
@@ -241,10 +416,32 @@ return ;
 
 sub find_closest_match
 {
+
+=head2 find_closest_match(\%options, $find_all, \@paths)
+
+Searches the I<Jump> database and the filesystem for matches to the I<paths>
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * $find_all - an enum - when set, the filesystem is also searches for matches
+
+=item * \@paths - elements of the query
+
+=back
+
+I<Returns> - An array reference containing the matches, empty if no matches are found 
+
+I<Exceptions> - None
+
+=cut
+
 my ($options, $find_all, $paths) = @_ ;
 
 my @paths = @{ $paths } ;
-
 return [] unless @paths ;
 
 my $cwd = cwd() ;
@@ -267,13 +464,11 @@ warn DumpTree
 	paths => \@paths,
 	} if $options->{debug} ;
 
-my %matches ;
-
-# find possible approximations and jumps, including minor path jumps
-
+my %already_matches ;
 my (@direct_matches, @directory_full_matches, @directory_partial_matches, @path_partial_matches, @cwd_sub_directory_matches, @sub_directory_matches) ;
 
 my $db = read_db($options) ;
+my $ignore_case = $options->{ignore_case} ? '(?i)' : '' ;
 	
 # matching direct paths
 if(1 == @paths && !$options->{no_direct_path})
@@ -286,9 +481,9 @@ if(1 == @paths && !$options->{no_direct_path})
 		warn "matches full path in file system: $path_to_match\n" if $options->{debug} ;
 
 		push @direct_matches, {path => $path_to_match, weight => 0,cumulated_path_weight => 0,  matches => 'full path in file system'} 
-			unless exists $matches{$path_to_match} ;
+			unless exists $already_matches{$path_to_match} ;
 
-		$matches{$path_to_match}++ ;
+		$already_matches{$path_to_match}++ ;
 		}
 	elsif(-d $cwd . '/' . $path_to_match)
 		{
@@ -298,13 +493,12 @@ if(1 == @paths && !$options->{no_direct_path})
 		$path_to_match =~ s[^/+][] ;
 		
 		push @direct_matches, {path => $path_to_match, weight => 0, cumulated_path_weight => 0, matches => 'directory under cwd'} 
-			unless exists $matches{$cwd . '/' . $path_to_match} ;
+			unless exists $already_matches{$cwd . '/' . $path_to_match} ;
 		
-		$matches{$cwd . '/' . $path_to_match}++ ;
+		$already_matches{$cwd . '/' . $path_to_match}++ ;
 		}
 	}
 
-my $ignore_case = $options->{ignore_case} ? '(?i)' : '' ;
 
 #matching directories in database
 for my $db_entry (sort keys %{$db})
@@ -325,9 +519,9 @@ for my $db_entry (sort keys %{$db})
 
 			push @directory_full_matches, 
 				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'end directory in db entry' } 
-					unless exists $matches{$db_entry} ;
+					unless exists $already_matches{$db_entry} ;
 			
-			$matches{$db_entry}++ ;
+			$already_matches{$db_entry}++ ;
 			}
 		}
 	elsif($db_entry_end_directory =~ /$ignore_case$end_directory_to_match/)
@@ -338,9 +532,9 @@ for my $db_entry (sort keys %{$db})
 
 			push @directory_partial_matches,
 				{ path => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of end directory in db entry'} 
-					unless exists $matches{$db_entry} ;
+					unless exists $already_matches{$db_entry} ;
 
-			$matches{$db_entry}++ ;
+			$already_matches{$db_entry}++ ;
 			}
 		}
 	elsif(my ($part_of_path_matched) = $db_entry =~ m[$ignore_case(.*$path_to_match[^/]*)])
@@ -349,9 +543,9 @@ for my $db_entry (sort keys %{$db})
 		
 		push @path_partial_matches, 
 			{ path => $part_of_path_matched, source => $db_entry, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'part of path in db entry'} 
-					unless exists $matches{$db_entry} ;
+					unless exists $already_matches{$db_entry} ;
 			
-		$matches{$db_entry}++ ;
+		$already_matches{$db_entry}++ ;
 		}
 
 	# sort by path, path weight, alphabetically
@@ -369,7 +563,7 @@ for my $db_entry (sort keys %{$db})
 	}
 	
 # matching sub directories under cwd 
-if(! $options->{no_sub_cwd} && ($find_all || 0 == keys %matches))
+if(! $options->{no_sub_cwd} && ($find_all || 0 == keys %already_matches))
 	{
 	my @discard_rules = map { File::Find::Rule->new->directory->name(qr/$_/)->prune->discard } @{$options->{ignore_path}} ; 
 	my $search = File::Find::Rule->or(@discard_rules, File::Find::Rule->directory) ;
@@ -391,9 +585,9 @@ if(! $options->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 			my $cumulated_path_weight = get_paths_weight($db, @directories) ;
 
 			push @cwd_sub_directory_matches, {path => "$cwd$part_of_path_matched", source => $directory, weight => 0, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under cwd'}
-				unless exists $matches{$directory} ;
+				unless exists $already_matches{$directory} ;
 
-			$matches{$directory}++ ;
+			$already_matches{$directory}++ ;
 			} 
 		}
 	
@@ -401,7 +595,7 @@ if(! $options->{no_sub_cwd} && ($find_all || 0 == keys %matches))
 	}
 
 # matching directories under database entries
-if(! $options->{no_sub_db} && ($find_all || 0 == keys %matches))
+if(! $options->{no_sub_db} && ($find_all || 0 == keys %already_matches))
 	{
 	for my $db_entry (sort {$db->{$b} <=> $db->{$a} || $a cmp $b } keys %{$db})
 		{
@@ -421,9 +615,9 @@ if(! $options->{no_sub_db} && ($find_all || 0 == keys %matches))
 				warn "matches sub directory under database entry: $directory\n" if $options->{debug} ;
 				push @sub_directory_matches, 
 					{path => $part_of_path_matched, source => $directory, weight => $weight, cumulated_path_weight => $cumulated_path_weight, matches => 'sub directory under a db entry'} 
-						unless exists $matches{$directory} ;
+						unless exists $already_matches{$directory} ;
 
-				$matches{$directory}++ ;
+				$already_matches{$directory}++ ;
 				} 
 			}
 		}  
@@ -440,6 +634,27 @@ return [@direct_matches, @directory_full_matches, @directory_partial_matches, @p
 
 sub directory_contains_file
 {
+
+=head2 directory_contains_file(\%options, \@directories)
+
+Searches for I<$option->{file}> in each of the directories passees as argument
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \@directories - directoris to search
+
+=back
+
+I<Returns> - An array reference containing the directories containing a matching file 
+
+I<Exceptions> - None
+
+=cut
+
 my ($options, $directories) = @_ ;
 my $file_regexp = $options->{file} ;
 
@@ -470,6 +685,28 @@ return
 
 sub get_paths_weight
 {
+
+=head2 get_path_weight(\@db, @directories)
+
+
+Given the succesive directories of a path, finds and cumulates the weight of each directory
+
+I<Arguments> -
+
+=over 2
+
+=item * \@db - Jump database
+
+=item * @directories - directories of a single path to weight
+
+=back
+
+I<Returns> - A cumulated path weight 
+
+I<Exceptions> - None
+
+=cut
+
 my ($db, @directories) = @_ ;
 
 my $cumulated_path_weight = 0 ;
@@ -491,6 +728,27 @@ return $cumulated_path_weight ;
 
 sub remove
 {
+
+=head2 remove(\%options, \@arguments)
+
+Remove an entry from the database
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \@arguments - path, [weight] to be removed 
+
+=back
+
+I<Returns> - Nothing
+
+I<Exceptions> - None
+
+=cut
+
 my ($options, $arguments) = @_ ;
 
 my ($weight, $path) = check_weight_and_path(@{$arguments}) ;
@@ -508,6 +766,27 @@ return ;
 
 sub add
 {
+
+=head2 add(\%options, \@arguments)
+
+Add an entry to the database with the given weight, unless it is blacklisted.
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \@arguments - path, [weight] to be removed 
+
+=back
+
+I<Returns> - Nothing
+
+I<Exceptions> - None
+
+=cut
+
 my ($options, $arguments) = @_ ;
 
 my ($weight, $path) = check_weight_and_path(@{$arguments}) ;
@@ -535,6 +814,27 @@ return ;
 
 sub remove_all
 {
+
+=head2 remove_all(\%options, \@arguments)
+
+Remove some or all entrie from the database.
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \@arguments - path regext array, if empty, all entries are removed 
+
+=back
+
+I<Returns> - Nothing
+
+I<Exceptions> - None
+
+=cut
+
 my %new_db ;
 
 my ($options, $arguments) = @_ ;
@@ -575,6 +875,25 @@ return ;
 
 sub show_database
 {
+
+=head2 show_database(\%options)
+
+Prints out the database.
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=back
+
+I<Returns> - Nothing
+
+I<Exceptions> - None
+
+=cut
+
 my ($options) = @_ ;
 
 my $db = read_db($options) ;
@@ -592,6 +911,25 @@ return ;
 
 sub show_configuration_files
 {
+
+=head2 show_configuration_files(\%options)
+
+Prints out the database and the configuration locations.
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=back
+
+I<Returns> - Nothing
+
+I<Exceptions> - None
+
+=cut
+
 my ($options) = @_ ;
 
 print "$options->{db_location}\n" ;
@@ -605,6 +943,19 @@ return ;
 
 sub show_version
 {
+
+=head2 show_version()
+
+Prints out the ons
+
+s<Arguments> - None
+
+I<Returns> - Nothing
+
+I<Exceptions> - None
+
+=cut
+
 print "Jump version $VERSION\n" ;
 
 return ;
@@ -614,6 +965,25 @@ return ;
 
 sub read_db
 {
+
+=head2 read_db(\%options)
+
+Reads a Jump database from disk.
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=back
+
+I<Returns> - The database as a hash reference
+
+I<Exceptions> - Error readin the database
+
+=cut
+
 my ($options) = @_ ;
 my %db ;
 
@@ -650,6 +1020,29 @@ return \%db ;
 
 sub write_db
 {
+
+=head2 write_db(\%options, \%db)
+
+Reads a Jump database from disk.
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * \%dbs - Jump database
+
+=back
+
+=back
+
+I<Returns> - Noting
+
+I<Exceptions> - Error writing the database
+
+=cut
+
 my ($options, $db) = @_ ;
 
 open my $db_fh, '>', $options->{db_location} or die "Jump: Can't open database '$options->{db_location}' for writing! $!" ;
@@ -682,6 +1075,29 @@ return ;
 
 sub check_weight_and_path
 {
+
+=head2 check_weight_and_path($weight, $path)
+
+Verifies its arguments, swapping them if necessary.
+
+I<Arguments> -
+
+=over 2
+
+=item * $weight - weight of the path to be worked on
+
+=item * $path - path to be worked on
+
+=back
+
+=back
+
+I<Returns> - tuple ($weight, $path)
+
+I<Exceptions> - None
+
+=cut
+
 my ($weight, $path) = @_ ;
 
 if(defined $weight)
@@ -732,6 +1148,29 @@ return ($weight, $path) ;
 
 sub is_blacklisted
 {
+
+=head2 is_blacklisted(\%options, $path)
+
+Verifies if the path can be added to the database or not
+
+I<Arguments> -
+
+=over 2
+
+=item * \%options - options parsed from the command line
+
+=item * $path - path to verify
+
+=back
+
+=back
+
+I<Returns> - True if the path can not be added to the database
+
+I<Exceptions> - None
+
+=cut
+
 my ($options, $path) = @_ ;
 
 return grep {$path =~ $_} @{ $options->{black_listed_directories} } ; 
@@ -741,7 +1180,19 @@ return grep {$path =~ $_} @{ $options->{black_listed_directories} } ;
 
 sub show_help
 { 
-#print STDERR `$ENV{SHELL} -c "man <(pod2man $0)"` or warn 'Can\'t display help!' ; ## no critic (InputOutput::ProhibitBacktickOperators)
+
+=head2 show_help()
+
+Extracts the documentation and displays it via I<man>
+
+I<Arguments - None
+
+I<Returns> - Nothing
+
+I<Exceptions> - Exits the program
+
+=cut
+
 system($ENV{SHELL}, '-c', "man <(pod2man $0)") or warn 'Can\'t display help!' ; ## no critic (InputOutput::ProhibitBacktickOperators)
 exit(1) ;
 }
@@ -751,25 +1202,23 @@ exit(1) ;
 sub do_bash_completion
 {
 
-my $ignore = <<'IGNORE' ;
+=head2 do_bash_completion($index, $command, \@arguments)
 
-#=pod
+Implements I<Bash> completion for this modules.
 
 I<Arguments> received from bash:
 
-#=over 2
+=over 2
 
-#=item * $index - index of the command line argument to complete (starting at '1')
+=item * $index - index of the command line argument to complete (starting at '1')
 
-#=item * $command - a string containing the command name
+=item * $command - a string containing the command name
 
-#=item * \@arguments - list of the arguments typed on the command line
+=item * \@arguments - list of the arguments typed on the command line
 
-#=back
+=back
 
-#=cut
-
-IGNORE
+=cut
 
 my ($argument_index, $command, @arguments) = @ARGV ;
 
@@ -783,26 +1232,13 @@ if(defined $word_to_complete && $word_to_complete =~ /^-/)
 	$word_to_complete =~ s/\s+$// ;
 
         my $trie = new Tree::Trie;
-        
 	$trie->add( 
 		qw(
-		search
-		file
-		complete
-		a add
-		r remove
-		remove_all
-		s show_database
-		show_setup_files
-
-		ignore_path
-		ignore_case
-		no_direct_path
-		no_sub_cwd
-		no_sub_db
-
-		v version
-		h help
+		search file complete 
+		a add r remove remove_all
+		s show_database show_setup_files
+		ignore_path ignore_case no_direct_path no_sub_cwd no_sub_db
+		v version h help
 		)) ;
 
         print join("\n", map { "$option_separator$_" } $trie->lookup($word_to_complete) ) ;
@@ -810,29 +1246,19 @@ if(defined $word_to_complete && $word_to_complete =~ /^-/)
 else
         {
 	my %with_completion = map {("-$_" => 1, "--$_" => 1)}
-		qw(
-		search
-		complete
-		remove
-		remove_all 
-		) ;
+		qw(search complete remove remove_all) ;
 	
 	my $do_completion = grep { exists $with_completion{$_} } @arguments ;
 	
 	if($do_completion)
 		{
-		#$App::Term::Jump::debug++ ;
-
 		my ($options, $search_arguments) = parse_command_line(@arguments) ;
 
 		if($options->{remove})
 			{
 			#allow completion of db entries only
 
-			$options->{ignore_case} = 0 ;
-			$options->{no_direct_path}++;
-			$options->{no_sub_cwd}++ ;
-			$options->{no_sub_db}++ ;
+			@{$options}{qw(ignore_case no_direct_path no_sub_cwd no_sub_db)} = (0, 1, 1, 1) ;
 
 			@arguments = ('.') if 1 == @arguments ; # force completion to whole db if no arguments are given
 			}

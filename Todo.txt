@@ -2,20 +2,10 @@
 # This is Todo.txt #
 #------------------#
 
-document test framework
-
-document all code with standard header
-
-move documentation to application module
-
 run xt tests
 
 profile code (for fun)
 
 move .git outside the module directory
 
-seamless integration with cd 
-	any visited directory is added to the database
-
-if directory ends with / do normal bash completion
 

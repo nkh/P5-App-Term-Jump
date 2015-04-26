@@ -33,6 +33,17 @@ use App::Term::Jump ;
 
 #------------------------------------------------------------------------------------------------------------------------
 
+=head1
+
+Implements I<jump_test>.
+
+Each invocation of I<jump_test> will create a temporary directory and a structure of directories under it.
+
+The tests listes in the call will be run sequentialy. I<jump_test> will stop at the first error an report 
+the error as well as all the necessary information to debug the error.
+
+=cut
+
 sub jump_test
 {
 my (%setup_arguments) = @_ ;

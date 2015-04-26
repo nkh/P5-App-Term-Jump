@@ -242,16 +242,39 @@ the matching possible matching directories are found, each directory is checked 
 
   not 0 in case of error
 
+=head1 BUGS AND LIMITATIONS
+
+None so far.
+
+Please report bugs on Github or CPAN
+
+=head1 AUTHOR
+
+        Nadim ibn hamouda el Khemir
+        CPAN ID: NKH
+        mailto: nadim@cpan.org
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright Nadim Khemir 2015.
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of either:
+
+=over 4
+
+=item * the GNU General Public License as published by the Free
+Software Foundation; either version 1, or (at your option) any
+later version, or
+
+=item * the Artistic License version 2.0.
+
+=back
+
 =head1 SEE ALSO
 
   autojump
 
-=head1 AUTHOR
-
-	Nadim ibn hamouda el Khemir
-	CPAN ID: NKH
-
-	Report bugs on Github or CPAN
 =cut
 
 

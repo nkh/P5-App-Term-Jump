@@ -86,7 +86,7 @@ return (execute_commands($options, $command_line_arguments), $options) ;
 sub execute_commands
 {
 
-=head2 execute_commands(\%options, \@command_line_arguments)
+=head2 [p] execute_commands(\%options, \@command_line_arguments)
 
 Called to execute commands after the command line is parsed
 
@@ -129,9 +129,9 @@ return $results ;
 sub parse_command_line
 {
 
-=head2 parse_command_line(@command_line_argumens)
+=head2 [p] parse_command_line(@command_line_argumens)
 
-doc.
+Parses the command line and loads the configuration file
 
 I<Arguments> -
 
@@ -148,6 +148,8 @@ I<Returns> -
 =item * \%options - options parsed from the command line
 
 =item * \@command_line_arguments - arguments parsed from the command line
+
+=back
 
 I<Exceptions> - invalid options 
 
@@ -205,7 +207,7 @@ return (\%options, \@ARGV) ;
 sub get_config
 {
 
-=head2 get_config($config_location)
+=head2 [p] get_config($config_location)
 
 Parses a file that contains the default configuration
 
@@ -275,7 +277,7 @@ return
 sub complete
 {
 
-=head2 complete(\%option, \@search_aguments)
+=head2 [p] complete(\%option, \@search_aguments)
 
 Prints and returns all the matches for a set of search options
 
@@ -340,7 +342,7 @@ return $matches ;
 sub search
 {
 
-=head2 search(\%options, \@search_arguments)
+=head2 [p] search(\%options, \@search_arguments)
 
 Prints the first match (truncated to the closes path) and returns all the matches for a set of search options
 
@@ -376,7 +378,7 @@ return $matches ;
 sub print_matches
 {
 
-=head2 print_matches(\%options, $field, \@matches)
+=head2 [p] print_matches(\%options, $field, \@matches)
 
 Prints the field, selected by $field, for all the matches 
 
@@ -417,7 +419,7 @@ return ;
 sub find_closest_match
 {
 
-=head2 find_closest_match(\%options, $find_all, \@paths)
+=head2 [p] find_closest_match(\%options, $find_all, \@paths)
 
 Searches the I<Jump> database and the filesystem for matches to the I<paths>
 
@@ -635,7 +637,7 @@ return [@direct_matches, @directory_full_matches, @directory_partial_matches, @p
 sub directory_contains_file
 {
 
-=head2 directory_contains_file(\%options, \@directories)
+=head2 [p] directory_contains_file(\%options, \@directories)
 
 Searches for I<$option->{file}> in each of the directories passees as argument
 
@@ -686,7 +688,7 @@ return
 sub get_paths_weight
 {
 
-=head2 get_path_weight(\@db, @directories)
+=head2 [p] get_path_weight(\@db, @directories)
 
 
 Given the succesive directories of a path, finds and cumulates the weight of each directory
@@ -729,7 +731,7 @@ return $cumulated_path_weight ;
 sub remove
 {
 
-=head2 remove(\%options, \@arguments)
+=head2 [p] remove(\%options, \@arguments)
 
 Remove an entry from the database
 
@@ -767,7 +769,7 @@ return ;
 sub add
 {
 
-=head2 add(\%options, \@arguments)
+=head2 [p] add(\%options, \@arguments)
 
 Add an entry to the database with the given weight, unless it is blacklisted.
 
@@ -815,7 +817,7 @@ return ;
 sub remove_all
 {
 
-=head2 remove_all(\%options, \@arguments)
+=head2 [p] remove_all(\%options, \@arguments)
 
 Remove some or all entrie from the database.
 
@@ -876,7 +878,7 @@ return ;
 sub show_database
 {
 
-=head2 show_database(\%options)
+=head2 [p] show_database(\%options)
 
 Prints out the database.
 
@@ -912,7 +914,7 @@ return ;
 sub show_configuration_files
 {
 
-=head2 show_configuration_files(\%options)
+=head2 [p] show_configuration_files(\%options)
 
 Prints out the database and the configuration locations.
 
@@ -944,7 +946,7 @@ return ;
 sub show_version
 {
 
-=head2 show_version()
+=head2 [p] show_version()
 
 Prints out the ons
 
@@ -966,7 +968,7 @@ return ;
 sub read_db
 {
 
-=head2 read_db(\%options)
+=head2 [p] read_db(\%options)
 
 Reads a Jump database from disk.
 
@@ -1021,7 +1023,7 @@ return \%db ;
 sub write_db
 {
 
-=head2 write_db(\%options, \%db)
+=head2 [p] write_db(\%options, \%db)
 
 Reads a Jump database from disk.
 
@@ -1032,8 +1034,6 @@ I<Arguments> -
 =item * \%options - options parsed from the command line
 
 =item * \%dbs - Jump database
-
-=back
 
 =back
 
@@ -1076,7 +1076,7 @@ return ;
 sub check_weight_and_path
 {
 
-=head2 check_weight_and_path($weight, $path)
+=head2 [p] check_weight_and_path($weight, $path)
 
 Verifies its arguments, swapping them if necessary.
 
@@ -1087,8 +1087,6 @@ I<Arguments> -
 =item * $weight - weight of the path to be worked on
 
 =item * $path - path to be worked on
-
-=back
 
 =back
 
@@ -1149,7 +1147,7 @@ return ($weight, $path) ;
 sub is_blacklisted
 {
 
-=head2 is_blacklisted(\%options, $path)
+=head2 [p] is_blacklisted(\%options, $path)
 
 Verifies if the path can be added to the database or not
 
@@ -1160,8 +1158,6 @@ I<Arguments> -
 =item * \%options - options parsed from the command line
 
 =item * $path - path to verify
-
-=back
 
 =back
 
@@ -1181,11 +1177,11 @@ return grep {$path =~ $_} @{ $options->{black_listed_directories} } ;
 sub show_help
 { 
 
-=head2 show_help()
+=head2 [p] show_help()
 
 Extracts the documentation and displays it via I<man>
 
-I<Arguments - None
+I<Arguments> - None
 
 I<Returns> - Nothing
 
@@ -1202,7 +1198,7 @@ exit(1) ;
 sub do_bash_completion
 {
 
-=head2 do_bash_completion($index, $command, \@arguments)
+=head2 [p] do_bash_completion($index, $command, \@arguments)
 
 Implements I<Bash> completion for this modules.
 

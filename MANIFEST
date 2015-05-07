@@ -15,6 +15,8 @@ scripts/jump_bash_completion.pl
 scripts/jump_bash_integration.sh
 
 t/match_many.t
+t/match_file.t
+t/match_space.t
 t/match.t
 t/Jump.pm
 t/divers.t

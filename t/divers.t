@@ -5,8 +5,8 @@ use warnings ;
 use t::Jump qw(jump_test) ;
 
 use File::HomeDir ;
-my $default_database_file = home() . '/.jump_db' ;
-my $default_configuration_file = home() . '/.jump_config'  ;
+my $default_database_file = 'Database file: ' . home() . '/.jump_db' ;
+my $default_configuration_file = 'Configuration file: ' . home() . '/.jump_config'  ;
 
 
 jump_test
@@ -38,7 +38,7 @@ jump_test
 		command => q{ run('--show_configuration_files') },
 		captured_output_expected => 
 			[
-			'TD/temporary_jump_database',
+			'Database file: TD/temporary_jump_database',
 			$default_configuration_file,
 			],
 		} ,
@@ -58,8 +58,8 @@ jump_test
 		command => q{ run('--show_configuration_files') },
 		captured_output_expected => 
 			[
-			'TD/temporary_jump_database',
-			'TD/temporary_jump_configuration',
+			'Database file: TD/temporary_jump_database',
+			'Configuration file: TD/temporary_jump_configuration',
 			],
 		} ,
 		]

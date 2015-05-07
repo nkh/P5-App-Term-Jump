@@ -934,8 +934,8 @@ I<Exceptions> - None
 
 my ($options) = @_ ;
 
-print "$options->{db_location}\n" ;
-print "$options->{config_location}\n" ;
+print "Database file: $options->{db_location}\n" ;
+print "Configuration file: $options->{config_location}\n" ;
 
 return ;
 }
